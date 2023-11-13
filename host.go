@@ -5,6 +5,7 @@ import (
 	"github.com/vela-ssoc/vela-kit/kind"
 	"github.com/vela-ssoc/vela-kit/lua"
 	"github.com/vela-ssoc/vela-kit/strutil"
+	"github.com/vela-ssoc/vela-radar/port"
 	"net"
 )
 
@@ -16,7 +17,7 @@ type Service struct {
 	Protocol  string          `json:"protocol"`
 	Transport string          `json:"transport"`
 	Version   string          `json:"version"`
-	HttpInfo  interface{}     `json:"http_info"`
+	HttpInfo  *port.HttpInfo  `json:"http_info"`
 }
 
 func (s *Service) String() string                         { return strutil.B2S(s.Bytes()) }
