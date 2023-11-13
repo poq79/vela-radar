@@ -8,6 +8,6 @@ import (
 var ErrorNoSyn = errors.New("no syn support")
 
 var DefaultSynOption = port.Option{
-	Rate:    1500,
+	Rate:    500,
 	Timeout: 800,
 }

@@ -40,6 +40,18 @@ func (t *Task) pingL(L *lua.LState) int {
 	return 1
 }
 
+func (t *Task) rateL(L *lua.LState) int {
+	n := L.IsInt(1)
+	if n < 10 {
+		t.Option.Rate = 10
+		L.Push(t)
+	} else {
+		t.Option.Rate = 10
+		L.Push(t)
+	}
+	return 1
+}
+
 func (t *Task) poolL(L *lua.LState) int {
 	scan := L.IsInt(1)
 	finger := L.IsInt(2)
@@ -68,6 +80,8 @@ func (t *Task) Index(L *lua.LState, key string) lua.LValue {
 		return lua.NewFunction(t.modeL)
 	case "location":
 		return lua.NewFunction(t.locationL)
+	case "rate":
+		return lua.NewFunction(t.rateL)
 	case "port":
 		return lua.NewFunction(t.portL)
 	case "httpx":

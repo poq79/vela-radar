@@ -401,8 +401,8 @@ func (ss *SynScanner) recv() {
 	// global var
 	var err error
 	var data []byte
-	var ipStr string
-	var _port uint16
+	var ip string
+	var src uint16
 
 	for {
 		// Read in the next packet.
@@ -427,9 +427,9 @@ func (ss *SynScanner) recv() {
 
 		// arp
 		if arpLayer.SourceProtAddress != nil {
-			ipStr = net.IP(arpLayer.SourceProtAddress).String()
-			if ss.watchMacCacheT.IsNeedWatch(ipStr) {
-				ss.watchMacCacheT.SetMac(ipStr, arpLayer.SourceHwAddress)
+			ip = net.IP(arpLayer.SourceProtAddress).String()
+			if ss.watchMacCacheT.IsNeedWatch(ip) {
+				ss.watchMacCacheT.SetMac(ip, arpLayer.SourceHwAddress)
 			}
 			arpLayer.SourceProtAddress = nil // clean arp parse status
 			continue
@@ -437,22 +437,21 @@ func (ss *SynScanner) recv() {
 
 		// tcp Match ip and port
 		if tcpLayer.DstPort != 0 && tcpLayer.DstPort >= 49000 && tcpLayer.DstPort <= 59000 {
-			ipStr = ipLayer.SrcIP.String()
-			_port = uint16(tcpLayer.SrcPort)
-			if !ss.watchIpStatusT.HasIp(ipStr) { // IP
+			ip = ipLayer.SrcIP.String()
+			src = uint16(tcpLayer.SrcPort)
+			if !ss.watchIpStatusT.HasIp(ip) {
 				continue
-			} else {
-				if ss.watchIpStatusT.HasPort(ipStr, _port) { // PORT
-					continue
-				} else {
-					ss.watchIpStatusT.RecordPort(ipStr, _port) // record
-				}
 			}
+
+			if ss.watchIpStatusT.HasPort(ip, src) {
+				continue
+			}
+			ss.watchIpStatusT.RecordPort(ip, src) // record
 
 			if tcpLayer.SYN && tcpLayer.ACK {
 				ss.callback(port.OpenIpPort{
 					Ip:   ipLayer.SrcIP,
-					Port: _port,
+					Port: src,
 				})
 				// reply to target
 				eth.DstMAC = ethLayer.SrcMAC
