@@ -63,7 +63,7 @@ func (rad *Radar) End() {
 	rad.task = nil
 }
 
-func (rad *Radar) Callback(tx Tx) {
+func (rad *Radar) Callback(tx *Tx) {
 	addr, _ := netip.AddrFromSlice(tx.Entry.Ip)
 
 	target := plugins.Target{
@@ -90,6 +90,10 @@ func (rad *Radar) Callback(tx Tx) {
 		Transport: srv.Transport,
 		Version:   srv.Version,
 		Banner:    srv.Raw,
+	}
+
+	if tx.Param.Httpx && (s.Protocol == "http" || s.Protocol == "https") {
+		tx.Web(&s)
 	}
 
 	rad.handle(&s)

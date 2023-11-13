@@ -3,10 +3,11 @@ package port
 import (
 	"errors"
 	"fmt"
-	"github.com/vela-ssoc/vela-radar/util"
 	"net"
 	"strconv"
 	"strings"
+
+	"github.com/vela-ssoc/vela-radar/util"
 )
 
 // TopTcpPorts 常见端口 ref https://github.com/robertdavidgraham/masscan/blob/master/src/main-conf.c
@@ -129,15 +130,22 @@ type Option struct {
 
 // HttpInfo Http服务基础信息
 type HttpInfo struct {
-	StatusCode int      // 状态码
-	ContentLen int      // 相应包大小
-	Url        string   // Url
-	Location   string   // 302、301重定向路径
-	Title      string   // 标题
-	Server     string   // 服务名
-	TlsCN      string   // tls使用者名称
-	TlsDNS     []string // tlsDNS列表
-	Fingers    []string // 识别到的web指纹
+	StatusCode int    // 状态码
+	ContentLen int    // 相应包大小
+	Url        string // Url
+	Location   string // 302、301重定向路径
+	Title      string // 标题
+	Server     string // 服务名
+
+	Body            string
+	Headers         string
+	Faviconhash_mh3 string
+	Faviconhash_md5 string
+	Screenshot_url  string
+
+	TlsCN   string   // tls使用者名称
+	TlsDNS  []string // tlsDNS列表
+	Fingers []string // 识别到的web指纹
 }
 
 func (hi *HttpInfo) String() string {

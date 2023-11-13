@@ -18,7 +18,7 @@ import (
 
 type Dispatch interface {
 	End()
-	Callback(Tx)
+	Callback(*Tx)
 	Catch(error)
 }
 
@@ -127,7 +127,7 @@ func (t *Task) GenRun() {
 
 	fingerPool, _ := thread.NewPoolWithFunc(t.Option.Pool.Finger, func(v interface{}) {
 		entry := v.(port.OpenIpPort)
-		t.Dispatch.Callback(Tx{Entry: entry, Param: t.Option})
+		t.Dispatch.Callback(&Tx{Entry: entry, Param: t.Option})
 		wg.FingerPrint.Done()
 	})
 	defer fingerPool.Release()
@@ -165,37 +165,45 @@ func (t *Task) GenRun() {
 	}
 
 	// host group scan func
-	hostScan, _ := thread.NewPoolWithFunc(t.Option.Pool.Scan, func(v interface{}) {
+	scan, _ := thread.NewPoolWithFunc(t.Option.Pool.Scan, func(v interface{}) {
 		ip := v.(net.IP)
 		scanner(ip)
 		wg.Scan.Done()
 	})
-	defer hostScan.Release()
+	defer scan.Release()
 
 	// Pool - ping and port scan
-	poolPing, _ := thread.NewPoolWithFunc(t.Option.Pool.Ping, func(v interface{}) {
+	ping, _ := thread.NewPoolWithFunc(t.Option.Pool.Ping, func(v interface{}) {
 		ip := v.(net.IP)
-		if host.IsLive(ip.String(), false, 800*time.Millisecond) {
-			wg.Scan.Add(1)
-			hostScan.Invoke(ip)
-		}
+		ok := host.IsLive(ip.String(), false, 800*time.Millisecond)
 		wg.Ping.Done()
+
+		if ok {
+			wg.Scan.Add(1)
+			scan.Invoke(ip)
+		}
 	})
-	defer poolPing.Release()
+	defer ping.Release()
 
 	shuffle := util.NewShuffle(it.TotalNum())    // shuffle
 	for i := uint64(0); i < it.TotalNum(); i++ { // ip index
-		ip := make(net.IP, len(it.GetIpByIndex(0)))
-		copy(ip, it.GetIpByIndex(shuffle.Get(i))) // Note: dup copy []byte when concurrent (GetIpByIndex not to do dup copy)
-		if !t.Option.Ping {
-			wg.Ping.Add(1)
-			_ = poolPing.Invoke(ip)
-		} else {
-			wg.Scan.Add(1)
-			_ = hostScan.Invoke(ip)
+		select {
+		case <-t.ctx.Done():
+			goto done
+		default:
+			ip := make(net.IP, len(it.GetIpByIndex(0)))
+			copy(ip, it.GetIpByIndex(shuffle.Get(i))) // Note: dup copy []byte when concurrent (GetIpByIndex not to do dup copy)
+			if !t.Option.Ping {
+				wg.Ping.Add(1)
+				_ = ping.Invoke(ip)
+			} else {
+				wg.Scan.Add(1)
+				_ = scan.Invoke(ip)
+			}
 		}
 	}
 
+done:
 	wg.Wait()
 	ss.Wait()
 	ss.Close()
