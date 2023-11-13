@@ -82,15 +82,15 @@ func WebFingerIdent(resp *http.Response) (names []string) {
 	return
 }
 
-// WebFingerIdentByFavicon web系统指纹识别,通过Favicon.ico
-func WebFingerIdentByFavicon(body []byte) (names []string) {
-	var data string
-	data = mmh3Hash32(standBase64(body))
+// WebFingerIdentByFavicon_mh3 web系统指纹识别,通过Favicon.ico
+func WebFingerIdentByFavicon_mh3(mh3Hash string) (names []string) {
+	// var data string
+	// data = Mmh3Hash32(StandBase64(body))
 	for _, finger := range WebFingers {
 		for _, finger2 := range finger.Fingers {
 			switch finger2.Method {
 			case "faviconhash":
-				if data != "" && len(finger2.Keyword) > 0 && data == finger2.Keyword[0] {
+				if mh3Hash != "" && len(finger2.Keyword) > 0 && mh3Hash == finger2.Keyword[0] {
 					if finger2.Name != "" {
 						finger.Name += "," + finger2.Name
 					}

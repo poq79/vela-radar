@@ -2,15 +2,17 @@ package web
 
 import (
 	"bytes"
+	"crypto/md5"
 	_ "embed"
 	"fmt"
-	"github.com/vela-ssoc/vela-radar/port"
-	"github.com/vela-ssoc/vela-radar/web/finder"
 	"io"
 	"net"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/vela-ssoc/vela-radar/port"
+	"github.com/vela-ssoc/vela-radar/web/finder"
 )
 
 //go:embed finger.json
@@ -72,6 +74,11 @@ goReq:
 		httpInfo.Location = rewriteUrl
 		httpInfo.Server = resp.Header.Get("Server")
 		httpInfo.Title = ExtractTitle(body)
+		httpInfo.Body = string(body)
+		httpInfo.Headers = getHeadersString(resp)
+		// todo: screenshot the webpage and upload png return url
+		// httpInfo.Screenshot_url = Screenshot(httpInfo.Url)
+
 		if resp.TLS != nil && len(resp.TLS.PeerCertificates) > 0 {
 			httpInfo.TlsCN = resp.TLS.PeerCertificates[0].Subject.CommonName
 			httpInfo.TlsDNS = resp.TLS.PeerCertificates[0].DNSNames
@@ -88,8 +95,10 @@ goReq:
 					fau = resp.Request.URL.String() + fau
 				}
 				_, body2, err2 := getReq(fau)
+				httpInfo.Faviconhash_mh3 = finder.Mmh3Hash32(finder.StandBase64(body2))
+				httpInfo.Faviconhash_md5 = fmt.Sprintf("%x", md5.Sum(body2))
 				if err2 == nil && len(body2) != 0 {
-					httpInfo.Fingers = append(httpInfo.Fingers, finder.WebFingerIdentByFavicon(body2)...)
+					httpInfo.Fingers = append(httpInfo.Fingers, finder.WebFingerIdentByFavicon_mh3(httpInfo.Faviconhash_mh3)...)
 				}
 			}
 		}
@@ -124,4 +133,18 @@ func getReq(url2 string) (resp *http.Response, body []byte, err error) {
 		}
 	}
 	return
+}
+
+func getHeadersString(resp *http.Response) string {
+	// Get the header map
+	headers := resp.Header
+
+	// Convert headers to a string
+	var headerString string
+	for key, values := range headers {
+		for _, value := range values {
+			headerString += fmt.Sprintf("%s: %s\n", key, value)
+		}
+	}
+	return headerString
 }

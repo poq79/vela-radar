@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/twmb/murmur3"
 	"regexp"
+
+	"github.com/twmb/murmur3"
 )
 
 var (
@@ -25,7 +26,7 @@ func FindFaviconUrl(body string) string {
 	return ""
 }
 
-func mmh3Hash32(raw []byte) string {
+func Mmh3Hash32(raw []byte) string {
 	var h32 = murmur3.New32()
 	_, err := h32.Write(raw)
 	if err == nil {
@@ -35,7 +36,7 @@ func mmh3Hash32(raw []byte) string {
 	}
 }
 
-func standBase64(braw []byte) []byte {
+func StandBase64(braw []byte) []byte {
 	bckd := base64.StdEncoding.EncodeToString(braw)
 	var buffer bytes.Buffer
 	for i := 0; i < len(bckd); i++ {

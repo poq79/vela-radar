@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"net"
 
-	"net"
-
 	"github.com/vela-ssoc/vela-kit/kind"
 	"github.com/vela-ssoc/vela-kit/lua"
 	"github.com/vela-ssoc/vela-kit/strutil"
@@ -16,11 +14,11 @@ type Service struct {
 	IP        net.IP          `json:"ip"`
 	Port      uint16          `json:"port"`
 	TLS       bool            `json:"tls"`
-	Banner    json.RawMessage `json:"banner"`
+	Banner    json.RawMessage `json:"banner"` // tcp服务的banner信息
 	Protocol  string          `json:"protocol"`
 	Transport string          `json:"transport"`
 	Version   string          `json:"version"`
-	HttpInfo  *port.HttpInfo  `json:"http_info"`
+	HttpInfo  *port.HttpInfo  `json:"http_info"` // web服务的指纹以及关键数据
 }
 
 func (s *Service) String() string                         { return strutil.B2S(s.Bytes()) }
