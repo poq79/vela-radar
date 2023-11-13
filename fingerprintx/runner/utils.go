@@ -32,11 +32,13 @@ func checkConfig(config cliConfig) error {
 	if len(config.outputFile) > 0 {
 		_, err := os.Stat(config.outputFile)
 		if !os.IsNotExist(err) && config.overwriteOutput {
-			fmt.Printf("File: %s already exists. Overwrite? [Y/N] ", config.outputFile)
-			fmt.Scan(&userInput)
-			if strings.ToLower(userInput)[0] != 'y' {
-				return fmt.Errorf("Output file %s already exists", config.outputFile)
-			}
+			// fmt.Printf("File: %s already exists. Overwrite? [Y/N] ", config.outputFile)
+			return fmt.Errorf("Output file %s already exists", config.outputFile)
+
+			// fmt.Scan(&userInput)
+			// if strings.ToLower(userInput)[0] != 'y' {
+			// 	return fmt.Errorf("Output file %s already exists", config.outputFile)
+			// }
 		}
 	}
 	if config.outputJSON && config.outputCSV {

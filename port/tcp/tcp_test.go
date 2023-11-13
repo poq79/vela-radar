@@ -1,14 +1,15 @@
 package tcp
 
 import (
-	"github.com/vela-ssoc/vela-kit/iputil"
-	"github.com/vela-ssoc/vela-radar/host"
-	"github.com/vela-ssoc/vela-radar/port"
 	"log"
 	"net"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/vela-ssoc/vela-kit/iputil"
+	"github.com/vela-ssoc/vela-radar/host"
+	"github.com/vela-ssoc/vela-radar/port"
 )
 
 func TestTcpScanner_Scan(t *testing.T) {
@@ -32,7 +33,7 @@ func TestTcpScanner_Scan(t *testing.T) {
 	it, _, _ := iputil.NewIter("1.1.1.1/30")
 
 	// scanner
-	ss, err := NewTcpScanner(retChan, DefaultTcpOption)
+	ss, err := NewTcpScanner(func(oip port.OpenIpPort) {}, DefaultTcpOption)
 	if err != nil {
 		t.Fatal(err)
 	}

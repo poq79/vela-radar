@@ -2,6 +2,15 @@ package radar
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
+	"net"
+	"net/http"
+	"net/netip"
+	"sync"
+	"testing"
+	"time"
+
 	wappalyzer "github.com/projectdiscovery/wappalyzergo"
 	"github.com/vela-ssoc/vela-kit/iputil"
 	"github.com/vela-ssoc/vela-kit/thread"
@@ -11,14 +20,6 @@ import (
 	"github.com/vela-ssoc/vela-radar/port"
 	"github.com/vela-ssoc/vela-radar/port/syn"
 	"github.com/vela-ssoc/vela-radar/util"
-	"io/ioutil"
-	"log"
-	"net"
-	"net/http"
-	"net/netip"
-	"sync"
-	"testing"
-	"time"
 )
 
 func TestScan(t *testing.T) {
@@ -57,7 +58,7 @@ func TestScan(t *testing.T) {
 			return
 		}
 
-		h := Host{
+		h := Service{
 			IP:        tx.Ip,
 			Port:      tx.Port,
 			Protocol:  srv.Protocol,
