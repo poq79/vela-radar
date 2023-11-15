@@ -2,6 +2,12 @@ package radar
 
 import (
 	"context"
+	"fmt"
+	"net"
+	"sync"
+	"time"
+
+	"github.com/vela-ssoc/vela-kit/audit"
 	"github.com/vela-ssoc/vela-kit/iputil"
 	"github.com/vela-ssoc/vela-kit/kind"
 	"github.com/vela-ssoc/vela-kit/lua"
@@ -11,9 +17,6 @@ import (
 	"github.com/vela-ssoc/vela-radar/port/syn"
 	"github.com/vela-ssoc/vela-radar/port/tcp"
 	"github.com/vela-ssoc/vela-radar/util"
-	"net"
-	"sync"
-	"time"
 )
 
 type Dispatch interface {
@@ -207,5 +210,13 @@ done:
 	wg.Wait()
 	ss.Wait()
 	ss.Close()
+
+	timeuse := time.Since(t.Option.Ctime)
+	hours := int(timeuse.Hours())
+	minutes := int(timeuse.Minutes()) % 60
+	seconds := int(timeuse.Seconds()) % 60
+	timeuseMsg := fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
+	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(xEnv.Inet()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Option.ID, timeuseMsg)).Log().Put()
+
 	t.Dispatch.End()
 }

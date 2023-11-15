@@ -2,13 +2,15 @@ package radar
 
 import (
 	"context"
-	"github.com/vela-ssoc/vela-kit/lua"
-	"github.com/vela-ssoc/vela-radar/fingerprintx/plugins"
-	"github.com/vela-ssoc/vela-radar/fingerprintx/scan"
+	"encoding/json"
 	"net/netip"
 	"reflect"
 	"sync/atomic"
 	"time"
+
+	"github.com/vela-ssoc/vela-kit/lua"
+	"github.com/vela-ssoc/vela-radar/fingerprintx/plugins"
+	"github.com/vela-ssoc/vela-radar/fingerprintx/scan"
 )
 
 var typeof = reflect.TypeOf((*Radar)(nil)).String()
@@ -92,7 +94,17 @@ func (rad *Radar) Callback(tx *Tx) {
 		Banner:    srv.Raw,
 	}
 
-	if tx.Param.Httpx && (s.Protocol == "http" || s.Protocol == "https") {
+	if tx.Param.Httpx && s.Protocol == "http" {
+		var raw plugins.ServiceHTTP
+		json.Unmarshal(srv.Raw, &raw)
+		s.Component = raw.Technologies
+		s.Banner = []byte{}
+		tx.Web(&s)
+	} else if tx.Param.Httpx && s.Protocol == "https" {
+		var raw plugins.ServiceHTTPS
+		json.Unmarshal(srv.Raw, &raw)
+		s.Component = raw.Technologies
+		s.Banner = []byte{}
 		tx.Web(&s)
 	}
 

@@ -11,14 +11,18 @@ import (
 )
 
 type Service struct {
-	IP        net.IP          `json:"ip"`
-	Port      uint16          `json:"port"`
+	IP        net.IP          `json:"ip"         bson:"ip"`   // IP
+	Port      uint16          `json:"port"       bson:"port"` // 端口
+	Host      string          `json:"host"       bson:"host"` // 主机域名 (扫内网的时候一般为空或者填 IP)
+	Location  string          `json:"location"`               // 地理位置 *
 	TLS       bool            `json:"tls"`
-	Banner    json.RawMessage `json:"banner"` // tcp服务的banner信息
-	Protocol  string          `json:"protocol"`
-	Transport string          `json:"transport"`
-	Version   string          `json:"version"`
-	HttpInfo  *port.HttpInfo  `json:"http_info"` // web服务的指纹以及关键数据
+	Banner    json.RawMessage `json:"banner"`    // tcp服务的banner信息
+	Protocol  string          `json:"protocol"`  // 应用层协议
+	Transport string          `json:"transport"` // 传输层协议 tcp/udp
+	Version   string          `json:"version"`   // 应用(或者协议)版本
+	Component []string        `json:"component"` // 组件标签
+	Comment   string          `json:"Comment"`   // 备注信息
+	HTTPInfo  *port.HttpInfo  `json:"http_info"` // web服务的指纹以及相关信息
 }
 
 func (s *Service) String() string                         { return strutil.B2S(s.Bytes()) }
@@ -34,10 +38,14 @@ func (s *Service) Bytes() []byte {
 	enc.KV("ip", s.IP)
 	enc.KV("port", s.Port)
 	enc.KV("tls", s.TLS)
+	enc.KV("host", s.Host)
 	enc.KV("protocol", s.Protocol)
 	enc.KV("transport", s.Transport)
 	enc.KV("version", s.Version)
-	enc.Raw("banner", s.Banner)
+	enc.KV("comment", s.Comment)
+	enc.KV("component", s.Component)
+	enc.Raw("http_info", s.HTTPInfo.Json())
+	enc.KV("banner", string([]byte(s.Banner)))
 	enc.End("}")
 	return enc.Bytes()
 }

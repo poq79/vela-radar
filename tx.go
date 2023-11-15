@@ -1,9 +1,10 @@
 package radar
 
 import (
+	"time"
+
 	"github.com/vela-ssoc/vela-radar/port"
 	"github.com/vela-ssoc/vela-radar/web"
-	"time"
 )
 
 type Tx struct {
@@ -17,7 +18,6 @@ func (tx *Tx) Web(s *Service) {
 	if !ok {
 		return
 	}
-
-	s.HttpInfo = info
+	s.HTTPInfo = info
 	xEnv.Errorf("%+v", info)
 }
