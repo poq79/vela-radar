@@ -55,22 +55,21 @@ func (ts *TcpScanner) Scan(ip net.IP, dst uint16) error {
 	if ts.isDone {
 		return errors.New("scanner is closed")
 	}
-	ts.wg.Add(1)
-	go func() {
-		defer ts.wg.Done()
-		//fmt.Println(1)
-		openIpPort := port.OpenIpPort{
-			Ip:   ip,
-			Port: dst,
-		}
-		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, dst), ts.timeout)
-		if conn != nil {
-			conn.Close()
-		} else {
-			return
-		}
-		ts.callback(openIpPort)
-	}()
+	//fmt.Println(1)
+	openIpPort := port.OpenIpPort{
+		Ip:   ip,
+		Port: dst,
+	}
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, dst), ts.timeout)
+	if err != nil {
+		return err
+	}
+
+	if conn == nil {
+		return nil
+	}
+	conn.Close()
+	ts.callback(openIpPort)
 	return nil
 }
 

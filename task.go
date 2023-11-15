@@ -71,6 +71,7 @@ type Scanner interface {
 }
 
 type Task struct {
+	co        *lua.LState
 	Option    Option
 	Dispatch  Dispatch
 	Worker    Worker
@@ -216,7 +217,8 @@ done:
 	minutes := int(timeuse.Minutes()) % 60
 	seconds := int(timeuse.Seconds()) % 60
 	timeuseMsg := fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
-	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(xEnv.Inet()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Option.ID, timeuseMsg)).Log().Put()
+	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Option.ID, timeuseMsg)).Log().Put()
 
 	t.Dispatch.End()
+	// audit.Debug("task end").From(t.co.CodeVM()).Put()
 }
