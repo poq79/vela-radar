@@ -116,7 +116,7 @@ func (rad *Radar) NewTask(target string) *Task {
 	}
 
 	ctx, cancel := context.WithCancel(xEnv.Context())
-	t := &Task{Option: opt, Dispatch: rad, ctx: ctx, cancel: cancel}
+	t := &Task{Option: opt, Dispatch: rad, ctx: ctx, cancel: cancel, co: xEnv.Clone(rad.cfg.co)}
 	rad.task = t
 	return t
 }

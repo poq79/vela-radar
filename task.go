@@ -2,6 +2,7 @@ package radar
 
 import (
 	"context"
+	"github.com/vela-ssoc/vela-kit/audit"
 	"github.com/vela-ssoc/vela-kit/iputil"
 	"github.com/vela-ssoc/vela-kit/kind"
 	"github.com/vela-ssoc/vela-kit/lua"
@@ -68,6 +69,7 @@ type Scanner interface {
 }
 
 type Task struct {
+	co        *lua.LState
 	Option    Option
 	Dispatch  Dispatch
 	Worker    Worker
@@ -208,4 +210,5 @@ done:
 	ss.Wait()
 	ss.Close()
 	t.Dispatch.End()
+	audit.Debug("task end").From(t.co.CodeVM()).Put()
 }
