@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/vela-ssoc/vela-kit/audit"
 	"github.com/vela-ssoc/vela-kit/iputil"
 	"github.com/vela-ssoc/vela-kit/kind"
@@ -44,22 +45,22 @@ func (wg *WaitGroup) Wait() {
 }
 
 type Pool struct {
-	Ping   int
-	Scan   int
-	Finger int
+	Ping   int `json:"ping"`
+	Scan   int `json:"scan"`
+	Finger int `json:"finger"`
 }
 
 type Option struct {
-	ID       string
-	Location string
-	Mode     string
-	Target   string
-	Port     string
-	Rate     int
-	Timeout  int
-	Httpx    bool
-	Ping     bool
-	Pool     Pool
+	ID       string `json:"id"`
+	Location string `json:"location"`
+	Mode     string `json:"mode"`
+	Target   string `json:"target"`
+	Port     string `json:"port"`
+	Rate     int    `json:"rate"`
+	Timeout  int    `json:"timeout"`
+	Httpx    bool   `json:"httpx"`
+	Ping     bool   `json:"pring"`
+	Pool     Pool   `json:"pool"`
 	Ctime    time.Time
 }
 
@@ -101,6 +102,7 @@ func (t *Task) info() []byte {
 	enc.KV("id", t.Option.ID)
 	enc.KV("status", "working")
 	enc.KV("ctime", t.Option.Ctime)
+	enc.Raw("option", util.ToJsonBytes(t.Option))
 	enc.End("}")
 	return enc.Bytes()
 }
@@ -110,7 +112,7 @@ func (t *Task) GenRun() {
 		xEnv.Errorf("%s dispatch got nil")
 		return
 	}
-
+	t.Option.ID = uuid.NewString()
 	var ss Scanner
 	var err error
 	wg := new(WaitGroup)

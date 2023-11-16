@@ -3,7 +3,6 @@ package port
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -170,12 +169,7 @@ func (hi *HttpInfo) String() string {
 	// }
 	// return buf.String()
 
-	jsonBytes, err := json.Marshal(hi)
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	return string(jsonBytes)
+	return util.ToJsonStr(hi)
 }
 
 func (hi *HttpInfo) Json() []byte {
