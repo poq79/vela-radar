@@ -1,12 +1,13 @@
 package port
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
-	"github.com/vela-ssoc/vela-radar/util"
 	"net"
 	"strconv"
 	"strings"
+
+	"github.com/vela-ssoc/vela-radar/util"
 )
 
 // TopTcpPorts 常见端口 ref https://github.com/robertdavidgraham/masscan/blob/master/src/main-conf.c
@@ -129,39 +130,54 @@ type Option struct {
 
 // HttpInfo Http服务基础信息
 type HttpInfo struct {
-	StatusCode int      // 状态码
-	ContentLen int      // 相应包大小
-	Url        string   // Url
-	Location   string   // 302、301重定向路径
-	Title      string   // 标题
-	Server     string   // 服务名
-	TlsCN      string   // tls使用者名称
-	TlsDNS     []string // tlsDNS列表
-	Fingers    []string // 识别到的web指纹
+	StatusCode    int      `json:"status_code"     bson:"status_code"`     // 响应状态码
+	ContentLength int      `json:"content_length"  bson:"content_length"`  // 响应包大小
+	URL           string   `json:"url"             bson:"url"`             // HTTP URL
+	Location      string   `json:"location"        bson:"location"`        // 301/302 重定向地址
+	Title         string   `json:"title"           bson:"title"`           // 网站 title
+	Server        string   `json:"server"          bson:"server"`          // HTTP Header 中的 server 字段
+	Body          string   `json:"body"            bson:"body"`            // HTTP body
+	Header        string   `json:"header"          bson:"header"`          // HTTP Header 的数据
+	FaviconMH3    string   `json:"favicon_mh3"     bson:"favicon_mh3"`     // favicon 的 mh3, mh3 一种比 md5 更快的算法
+	FaviconMD5    string   `json:"favicon_md5"     bson:"favicon_md5"`     // favicon 的 md5
+	ScreenshotURL string   `json:"screenshot_url"  bson:"screenshot_url"`  // 网站截图的 URL
+	Fingerprints  []string `json:"fingerprints"    bson:"fingerprints"`    // 识别到的 web 指纹
+	TLSCommonName string   `json:"tls_common_name" bson:"tls_common_name"` // TLS 证书的 CommonName
+	TLSDNSNames   []string `json:"tls_dns_names"   bson:"tls_dns_names"`   // TLS 证书的 DNSName
 }
 
 func (hi *HttpInfo) String() string {
 	if hi == nil {
 		return ""
 	}
-	var buf strings.Builder
-	buf.WriteString(fmt.Sprintf("[HttpInfo]%s StatusCode:%d ContentLen:%d Title:%s ", hi.Url, hi.StatusCode, hi.ContentLen, hi.Title))
-	if hi.Location != "" {
-		buf.WriteString("Location:" + hi.Location + " ")
+	// var buf strings.Builder
+	// buf.WriteString(fmt.Sprintf("[HttpInfo]%s StatusCode:%d ContentLen:%d Title:%s ", hi.URL, hi.StatusCode, hi.ContentLength, hi.Title))
+	// if hi.Location != "" {
+	// 	buf.WriteString("Location:" + hi.Location + " ")
+	// }
+	// if hi.TLSCommonName != "" {
+	// 	buf.WriteString("TlsCN:" + hi.TLSCommonName + " ")
+	// }
+	// if len(hi.TLSDNSNames) > 0 {
+	// 	buf.WriteString("TlsDNS:" + strings.Join(hi.TLSDNSNames, ",") + " ")
+	// }
+	// if hi.Server != "" {
+	// 	buf.WriteString("Server:" + hi.Server + " ")
+	// }
+	// if len(hi.Fingerprints) != 0 {
+	// 	buf.WriteString(fmt.Sprintf("Fingers:%s ", hi.Fingerprints))
+	// }
+	// return buf.String()
+
+	return util.ToJsonStr(hi)
+}
+
+func (hi *HttpInfo) Json() []byte {
+	jsonBytes, err := json.Marshal(hi)
+	if err != nil {
+		return []byte{}
 	}
-	if hi.TlsCN != "" {
-		buf.WriteString("TlsCN:" + hi.TlsCN + " ")
-	}
-	if len(hi.TlsDNS) > 0 {
-		buf.WriteString("TlsDNS:" + strings.Join(hi.TlsDNS, ",") + " ")
-	}
-	if hi.Server != "" {
-		buf.WriteString("Server:" + hi.Server + " ")
-	}
-	if len(hi.Fingers) != 0 {
-		buf.WriteString(fmt.Sprintf("Fingers:%s ", hi.Fingers))
-	}
-	return buf.String()
+	return jsonBytes
 }
 
 // ParsePortRangeStr 解析端口字符串

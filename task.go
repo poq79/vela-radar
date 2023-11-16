@@ -2,6 +2,12 @@ package radar
 
 import (
 	"context"
+	"fmt"
+	"net"
+	"sync"
+	"time"
+
+	"github.com/google/uuid"
 	"github.com/vela-ssoc/vela-kit/audit"
 	"github.com/vela-ssoc/vela-kit/iputil"
 	"github.com/vela-ssoc/vela-kit/kind"
@@ -12,9 +18,6 @@ import (
 	"github.com/vela-ssoc/vela-radar/port/syn"
 	"github.com/vela-ssoc/vela-radar/port/tcp"
 	"github.com/vela-ssoc/vela-radar/util"
-	"net"
-	"sync"
-	"time"
 )
 
 type Dispatch interface {
@@ -42,22 +45,22 @@ func (wg *WaitGroup) Wait() {
 }
 
 type Pool struct {
-	Ping   int
-	Scan   int
-	Finger int
+	Ping   int `json:"ping"`
+	Scan   int `json:"scan"`
+	Finger int `json:"finger"`
 }
 
 type Option struct {
-	ID       string
-	Location string
-	Mode     string
-	Target   string
-	Port     string
-	Rate     int
-	Timeout  int
-	Httpx    bool
-	Ping     bool
-	Pool     Pool
+	ID       string `json:"id"`
+	Location string `json:"location"`
+	Mode     string `json:"mode"`
+	Target   string `json:"target"`
+	Port     string `json:"port"`
+	Rate     int    `json:"rate"`
+	Timeout  int    `json:"timeout"`
+	Httpx    bool   `json:"httpx"`
+	Ping     bool   `json:"pring"`
+	Pool     Pool   `json:"pool"`
 	Ctime    time.Time
 }
 
@@ -99,6 +102,7 @@ func (t *Task) info() []byte {
 	enc.KV("id", t.Option.ID)
 	enc.KV("status", "working")
 	enc.KV("ctime", t.Option.Ctime)
+	enc.Raw("option", util.ToJsonBytes(t.Option))
 	enc.End("}")
 	return enc.Bytes()
 }
@@ -108,7 +112,7 @@ func (t *Task) GenRun() {
 		xEnv.Errorf("%s dispatch got nil")
 		return
 	}
-
+	t.Option.ID = uuid.NewString()
 	var ss Scanner
 	var err error
 	wg := new(WaitGroup)
@@ -209,6 +213,14 @@ done:
 	wg.Wait()
 	ss.Wait()
 	ss.Close()
+
+	timeuse := time.Since(t.Option.Ctime)
+	hours := int(timeuse.Hours())
+	minutes := int(timeuse.Minutes()) % 60
+	seconds := int(timeuse.Seconds()) % 60
+	timeuseMsg := fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
+	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Option.ID, timeuseMsg)).Log().Put()
+
 	t.Dispatch.End()
-	audit.Debug("task end").From(t.co.CodeVM()).Put()
+	// audit.Debug("task end").From(t.co.CodeVM()).Put()
 }

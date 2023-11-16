@@ -2,15 +2,17 @@ package web
 
 import (
 	"bytes"
+	"crypto/md5"
 	_ "embed"
 	"fmt"
-	"github.com/vela-ssoc/vela-radar/port"
-	"github.com/vela-ssoc/vela-radar/web/finder"
 	"io"
 	"net"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/vela-ssoc/vela-radar/port"
+	"github.com/vela-ssoc/vela-radar/web/finder"
 )
 
 //go:embed finger.json
@@ -66,21 +68,26 @@ goReq:
 		}
 		//
 		httpInfo = new(port.HttpInfo)
-		httpInfo.Url = resp.Request.URL.String()
+		httpInfo.URL = resp.Request.URL.String()
 		httpInfo.StatusCode = resp.StatusCode
-		httpInfo.ContentLen = int(resp.ContentLength)
+		httpInfo.ContentLength = int(resp.ContentLength)
 		httpInfo.Location = rewriteUrl
 		httpInfo.Server = resp.Header.Get("Server")
 		httpInfo.Title = ExtractTitle(body)
+		httpInfo.Body = string(body)
+		httpInfo.Header = getHeadersString(resp)
+		// todo: screenshot the webpage and upload png return url
+		// httpInfo.Screenshot_url = Screenshot(httpInfo.Url)
+
 		if resp.TLS != nil && len(resp.TLS.PeerCertificates) > 0 {
-			httpInfo.TlsCN = resp.TLS.PeerCertificates[0].Subject.CommonName
-			httpInfo.TlsDNS = resp.TLS.PeerCertificates[0].DNSNames
+			httpInfo.TLSCommonName = resp.TLS.PeerCertificates[0].Subject.CommonName
+			httpInfo.TLSDNSNames = resp.TLS.PeerCertificates[0].DNSNames
 		}
 		// finger
 		err = finder.ParseWebFingerData(fD)
 		if err == nil {
 			resp.Body = io.NopCloser(bytes.NewReader(body))
-			httpInfo.Fingers = finder.WebFingerIdent(resp)
+			httpInfo.Fingerprints = finder.WebFingerIdent(resp)
 			// favicon
 			fau := finder.FindFaviconUrl(string(body))
 			if fau != "" {
@@ -88,8 +95,10 @@ goReq:
 					fau = resp.Request.URL.String() + fau
 				}
 				_, body2, err2 := getReq(fau)
+				httpInfo.FaviconMH3 = finder.Mmh3Hash32(finder.StandBase64(body2))
+				httpInfo.FaviconMD5 = fmt.Sprintf("%x", md5.Sum(body2))
 				if err2 == nil && len(body2) != 0 {
-					httpInfo.Fingers = append(httpInfo.Fingers, finder.WebFingerIdentByFavicon(body2)...)
+					httpInfo.Fingerprints = append(httpInfo.Fingerprints, finder.WebFingerIdentByFavicon_mh3(httpInfo.FaviconMH3)...)
 				}
 			}
 		}
@@ -124,4 +133,18 @@ func getReq(url2 string) (resp *http.Response, body []byte, err error) {
 		}
 	}
 	return
+}
+
+func getHeadersString(resp *http.Response) string {
+	// Get the header map
+	headers := resp.Header
+
+	// Convert headers to a string
+	var headerString string
+	for key, values := range headers {
+		for _, value := range values {
+			headerString += fmt.Sprintf("%s: %s\n", key, value)
+		}
+	}
+	return headerString
 }
