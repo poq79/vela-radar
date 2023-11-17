@@ -81,6 +81,9 @@ rr.define()
 -- 启动服务
 rr.start()
 
+-- 启动内部API调用功能
+rr.define()
+
 -- 开启扫描任务
 rr.task("127.0.0.1").port("top1000").httpx(true).run()
 ```

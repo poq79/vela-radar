@@ -159,10 +159,9 @@ func (rad *Radar) NewTask(target string) *Task {
 }
 
 func NewRadar(cfg *Config) *Radar {
-	naa := &Radar{
+	rad := &Radar{
 		cfg:    cfg,
 		Status: Idle,
 	}
-	naa.define(xEnv.R())
-	return naa
+	return rad
 }
