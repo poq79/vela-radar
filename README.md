@@ -39,26 +39,31 @@ Active scanning of network assets
 ### **GET** `/arr/agent/radar/status`  
 获取当前扫描服务状态   
 ### **POST** `/arr/agent/radar/runscan`  
-    运行扫描任务(如果已有扫描任务正在进行则无法运行)  
-    **参数**(*为必填项):  
-    target  *
-    location  *
-    name  *
-    mode  
-    port  
-    rate  
-    timeout  
-    httpx  
-    ping  
-    pool_ping  
-    pool_scan  
-    pool_finger  
-    **eg**:  
-    {
-        "target":"127.0.0.1",
-        "location":"办公网",
-        "name":"测试扫描任务"
-    }
+运行扫描任务(如果已有扫描任务正在进行则无法运行)  
+>**参数**   ( * 为必填项):  
+`target`  *  目标IP/CIDR/IP范围  
+`location`  *  网络位置  
+`name`  *  任务名称  
+`mode`  模式 syn/tcp
+`port`  端口  
+`rate`  基础发包速率   
+`timeout`  超时时间(ms)  
+`httpx`  是否http指纹探测  
+`ping`  是否开启ping存活探测  
+`pool_ping`  ping探测协程数      
+`pool_scan`  scan协程数  
+`pool_finger` 指纹识别协程数   
+
+**例子**:  
+```json
+{
+    "target":"192.168.1.1/24",
+    "location":"测试本地网",
+    "name":"测试扫描任务",
+    "port":"top1000",
+    "httox":true
+}
+```
 
 
 
@@ -89,4 +94,4 @@ rr.task("127.0.0.1").port("top1000").httpx(true).run()
 ```
 
 ## 注意
-再做外网探测的 可能会因为syn的包过多 导致网络无法链接
+1. 在做外网探测时, 可能会因为syn的包过多,导致网络无法链接
