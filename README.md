@@ -40,12 +40,12 @@ Active scanning of network assets
 获取当前扫描服务状态   
 ### **POST** `/arr/agent/radar/runscan`  
 运行扫描任务(如果已有扫描任务正在进行则无法运行)  
->**参数**   ( * 为必填项):  
+**参数**   ( * 为必填项):  
 `target`  *  目标IP/CIDR/IP范围  
 `location`  *  网络位置  
 `name`  *  任务名称  
-`mode`  模式 syn/tcp
-`port`  端口  
+`mode`  模式 "tcp"(默认)/"syn"  
+`port`  端口   
 `rate`  基础发包速率   
 `timeout`  超时时间(ms)  
 `httpx`  是否http指纹探测  
