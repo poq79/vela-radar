@@ -121,6 +121,8 @@ func (t *Task) GenRun() {
 		return
 	}
 
+	excluded_ip_map := util.IpstrWithCommaToMap(t.Option.ExcludedTarget)
+
 	// 解析端口字符串并且优先发送 TopTcpPorts 中的端口, eg: 1-65535,top1000
 	ports, err := port.ShuffleParseAndMergeTopPorts(t.Option.Port)
 	if err != nil {
@@ -204,7 +206,10 @@ func (t *Task) GenRun() {
 		default:
 			ip := make(net.IP, len(it.GetIpByIndex(0)))
 			copy(ip, it.GetIpByIndex(shuffle.Get(i))) // Note: dup copy []byte when concurrent (GetIpByIndex not to do dup copy)
-			if t.Option.Ping {
+			// 黑名单ip
+			if excluded_ip_map[ip.String()] {
+				atomic.AddUint64(&t.Count_success, uint64(len(ports)))
+			} else if t.Option.Ping {
 				wg.Ping.Add(1)
 				_ = ping.Invoke(ip)
 			} else {

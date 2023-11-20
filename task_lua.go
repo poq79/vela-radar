@@ -47,6 +47,13 @@ func (t *Task) rateL(L *lua.LState) int {
 	return 1
 }
 
+func (t *Task) excludeL(L *lua.LState) int {
+	excludeip := L.CheckString(1)
+	t.Option.ExcludedTarget = excludeip
+	L.Push(t)
+	return 1
+}
+
 func (t *Task) poolL(L *lua.LState) int {
 	scan := L.IsInt(1)
 	finger := L.IsInt(2)
@@ -60,6 +67,8 @@ func (t *Task) poolL(L *lua.LState) int {
 
 func (t *Task) Index(L *lua.LState, key string) lua.LValue {
 	switch key {
+	case "exclude":
+		return lua.NewFunction(t.excludeL)
 	case "mode":
 		return lua.NewFunction(t.modeL)
 	case "location":

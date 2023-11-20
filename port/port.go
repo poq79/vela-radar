@@ -89,6 +89,40 @@ var TopTcpPorts = []uint16{
 	57797, 58080, 60020, 60443, 61532, 61900, 62078, 63331, 64623, 64680, 65000,
 	65129, 65389}
 
+var TopUdpPorts = []uint16{
+	161,   /* SNMP - should be found on all network equipment */
+	135,   /* MS-RPC - should be found on all modern Windows */
+	500,   /* ISAKMP - for establishing IPsec tunnels */
+	137,   /* NetBIOS-NameService - should be found on old Windows */
+	138,   /* NetBIOS-Datagram - should be found on old Windows */
+	445,   /* SMB datagram service */
+	67,    /* DHCP */
+	53,    /* DNS */
+	1900,  /* UPnP - Microsoft-focused local discovery */
+	5353,  /* mDNS - Apple-focused local discovery */
+	4500,  /* nat-t-ike - IPsec NAT traversal */
+	514,   /* syslog - all Unix machiens */
+	69,    /* TFTP */
+	49152, /* first of modern ephemeral ports */
+	631,   /* IPP - printing protocol for Linux */
+	123,   /* NTP network time protocol */
+	1434,  /* MS-SQL server*/
+	520,   /* RIP - routers use this protocol sometimes */
+	7,     /* Echo */
+	111,   /* SunRPC portmapper */
+	2049,  /* SunRPC NFS */
+	5683,  /* COAP */
+	11211, /* memcached */
+	1701,  /* L2TP */
+	27960, /* quaked amplifier */
+	1645,  /* RADIUS */
+	1812,  /* RADIUS */
+	1646,  /* RADIUS */
+	1813,  /* RADIUS */
+	3343,  /* Microsoft Cluster Services */
+	2535,  /* MADCAP rfc2730 TODO FIXME */
+}
+
 type Scanner interface {
 	Close()
 	Wait()
