@@ -42,13 +42,8 @@ func (t *Task) pingL(L *lua.LState) int {
 
 func (t *Task) rateL(L *lua.LState) int {
 	n := L.IsInt(1)
-	if n < 10 {
-		t.Option.Rate = 10
-		L.Push(t)
-	} else {
-		t.Option.Rate = 10
-		L.Push(t)
-	}
+	t.Option.set_rate(n)
+	L.Push(t)
 	return 1
 }
 
@@ -56,23 +51,12 @@ func (t *Task) poolL(L *lua.LState) int {
 	scan := L.IsInt(1)
 	finger := L.IsInt(2)
 	ping := L.IsInt(3)
-
-	if scan > 5 {
-		t.Option.Pool.Scan = scan
-	}
-
-	if finger > 5 {
-		t.Option.Pool.Finger = finger
-	}
-
-	if ping > 5 {
-		t.Option.Pool.Ping = ping
-	}
+	t.Option.set_pool_scan(scan)
+	t.Option.set_pool_finger(finger)
+	t.Option.set_pool_ping(ping)
 	L.Push(t)
 	return 1
 }
-
-// r.task("172.31.61.0/24").mode("syn").location("宛平南路88号/办公区/3F").httpx(true).port("top1000").ping(true).run()
 
 func (t *Task) Index(L *lua.LState, key string) lua.LValue {
 	switch key {

@@ -8,6 +8,7 @@ import (
 	"github.com/vela-ssoc/vela-kit/lua"
 	"github.com/vela-ssoc/vela-kit/strutil"
 	"github.com/vela-ssoc/vela-radar/port"
+	"github.com/vela-ssoc/vela-radar/util"
 )
 
 type Service struct {
@@ -44,7 +45,7 @@ func (s *Service) Bytes() []byte {
 	enc.KV("version", s.Version)
 	enc.KV("comment", s.Comment)
 	enc.KV("component", s.Component)
-	enc.Raw("http_info", s.HTTPInfo.Json())
+	enc.Raw("http_info", util.ToJsonBytes(s.HTTPInfo))
 	enc.KV("banner", string([]byte(s.Banner)))
 	enc.End("}")
 	return enc.Bytes()

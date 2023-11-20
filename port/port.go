@@ -1,7 +1,6 @@
 package port
 
 import (
-	"encoding/json"
 	"errors"
 	"net"
 	"strconv"
@@ -170,14 +169,6 @@ func (hi *HttpInfo) String() string {
 	// return buf.String()
 
 	return util.ToJsonStr(hi)
-}
-
-func (hi *HttpInfo) Json() []byte {
-	jsonBytes, err := json.Marshal(hi)
-	if err != nil {
-		return []byte{}
-	}
-	return jsonBytes
 }
 
 // ParsePortRangeStr 解析端口字符串

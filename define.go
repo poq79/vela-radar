@@ -1,97 +1,127 @@
 package radar
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+
 	"github.com/valyala/fasthttp"
-	"github.com/vela-ssoc/vela-kit/kind"
 )
 
-type TaskParam struct {
-	ID                 string   `json:"id"`
-	Host               []string `json:"host"`
-	Mode               string   `json:"mode"`
-	Ports              string   `json:"ports"`
-	AllPort            bool     `json:"all_port"`
-	Rate               int      `json:"rate"`
-	Retries            int      `json:"retries"`
-	Ping               bool     `json:"ping"`
-	Verbose            bool     `json:"verbose"`
-	ServiceDiscovery   bool     `json:"service_discovery"`
-	SkipHostDiscovery  bool     `json:"skip_host_discovery"`
-	DisableUpdateCheck bool     `json:"disable_update_check"`
-	ServiceVersion     bool     `json:"service_version"`
-}
-
-func NewTaskParam() *TaskParam {
-	return &TaskParam{
-		Verbose: false,
-		Mode:    "sn",
-		// ScanAllIPS: true,
-		// Ports: "80-10000",
-		Retries:            2,
-		Rate:               256, //wg thread worker goroutine
-		Ping:               false,
-		ServiceDiscovery:   true,
-		SkipHostDiscovery:  true,
-		DisableUpdateCheck: true,
-		ServiceVersion:     true,
-	}
-}
-
-func (tp *TaskParam) Clone() {
-	/*
-		option.Host = tp.Host
-		option.Verbose = tp.Verbose
-		option.ScanType = tp.Mode
-		option.ScanAllIPS = tp.AllPort
-		option.Ports = tp.Ports
-		option.Retries = tp.Retries
-		option.Rate = tp.Rate //wg thread worker goroutine
-		option.Ping = tp.Ping
-		option.ServiceDiscovery = tp.ServiceDiscovery
-		option.SkipHostDiscovery = tp.SkipHostDiscovery
-		option.DisableUpdateCheck = tp.DisableUpdateCheck
-		option.ServiceVersion = tp.ServiceVersion
-
-	*/
-}
+const taskParameterInitErr = "[API /api/v1/arr/agent/radar/runscan]Parameter initialization failed. Please check whether the parameter data type is correct--"
 
 func (rad *Radar) TaskPath() string {
-	return fmt.Sprintf("/api/v1/arr/agent/lua/radbu/%s/task", rad.Name())
+	// Generate URLs with specific information eg: name,location,workgroup..
+	// ..
+	return "/api/v1/arr/agent/radar/runscan"
 }
 
 func (rad *Radar) StatusPath() string {
-	return fmt.Sprintf("/api/v1/arr/agent/lua/radbu/%s/status", rad.Name())
+	// Generate URLs with specific information  eg: name,location,workgroup..
+	// ..
+	return "/api/v1/arr/agent/radar/status"
 }
 
 func (rad *Radar) TaskHandle(ctx *fasthttp.RequestCtx) error {
-	/*
-		param := NewTaskParam()
-		body := ctx.PostBody()
-		if len(body) == 0 {
-			return fmt.Errorf("task handle fail got empty")
-		}
+	if rad.TaskStatus() == "working" {
+		return errors.New("there are already scanning tasks running")
+	}
+	// 获取请求的 JSON 数据
+	body := ctx.PostBody()
 
-		err := json.Unmarshal(body, &param)
-		if err != nil {
-			return err
+	// 解析 JSON 数据
+	var data map[string]interface{}
+	err := json.Unmarshal(body, &data)
+	if err != nil {
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
+		return err
+	}
+	if v, ok := data["target"].(string); ok && v != "" {
+		rad.NewTask(v)
+	} else {
+		return errors.New(taskParameterInitErr + "target")
+	}
+	for key, value := range data {
+		switch key {
+		case "location":
+			if v, ok := value.(string); ok {
+				rad.task.Option.Location = v
+			} else {
+				return errors.New(taskParameterInitErr + key)
+			}
+		case "name":
+			if v, ok := value.(string); ok {
+				rad.task.Name = v
+			} else {
+				return errors.New(taskParameterInitErr + key)
+			}
+		case "mode":
+			if v, ok := value.(string); ok {
+				rad.task.Option.Mode = v
+			} else {
+				// return errors.New(init_err)
+			}
+		case "port":
+			if v, ok := value.(string); ok {
+				rad.task.Option.Port = v
+			} else {
+				// return errors.New(init_err)
+			}
+		case "rate":
+			if v, ok := value.(int); ok {
+				rad.task.Option.set_rate(v)
+			} else {
+				// return errors.New(init_err)
+			}
+		case "timeout":
+			if v, ok := value.(int); ok {
+				rad.task.Option.set_timeout(v)
+			} else {
+				// return errors.New(init_err)
+			}
+		case "httpx":
+			if v, ok := value.(bool); ok {
+				rad.task.Option.Httpx = v
+			} else {
+				// return errors.New(init_err)
+			}
+		case "ping":
+			if v, ok := value.(bool); ok {
+				rad.task.Option.Ping = v
+			} else {
+				// return errors.New(init_err)
+			}
+		case "pool_ping":
+			if v, ok := value.(int); ok {
+				rad.task.Option.set_pool_ping(v)
+			} else {
+				// return errors.New(init_err)
+			}
+		case "pool_scan":
+			if v, ok := value.(int); ok {
+				rad.task.Option.set_pool_scan(v)
+			} else {
+				// return errors.New(init_err)
+			}
+		case "pool_finger":
+			if v, ok := value.(int); ok {
+				rad.task.Option.set_pool_finger(v)
+			} else {
+				// return errors.New(init_err)
+			}
 		}
-
-		task := rad.NewTask(param.Host)
-		param.Clone(task.Option)
-		ctx.Write(task.info())
-		go task.GenRun()
-	*/
+	}
+	go rad.task.GenRun()
+	ctx.Response.Header.SetContentType("application/json")
+	ctx.Response.SetBody(rad.task.info())
 	return nil
 }
 
 func (rad *Radar) StatusHandle(ctx *fasthttp.RequestCtx) error {
-	enc := kind.NewJsonEncoder()
-	enc.Tab("")
-	enc.KV("task_id", rad.TaskID())
-	enc.KV("task_status", rad.TaskStatus())
-	enc.End("}")
-	ctx.Write(enc.Bytes())
+	info := rad.Info()
+	fmt.Println(string(info))
+	ctx.Response.Header.SetContentType("application/json")
+	ctx.Response.SetBody(info)
 	return nil
 }
 

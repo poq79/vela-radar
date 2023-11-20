@@ -3,11 +3,13 @@ package radar
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/netip"
 	"reflect"
 	"sync/atomic"
 	"time"
 
+	"github.com/vela-ssoc/vela-kit/kind"
 	"github.com/vela-ssoc/vela-kit/lua"
 	"github.com/vela-ssoc/vela-radar/fingerprintx/plugins"
 	"github.com/vela-ssoc/vela-radar/fingerprintx/scan"
@@ -31,12 +33,34 @@ func (rad *Radar) IsWorking() bool {
 	return atomic.LoadUint32(&rad.Status) == Working
 }
 
+func (rad *Radar) Info() []byte {
+	enc := kind.NewJsonEncoder()
+
+	enc.Tab("")
+	enc.KV("name", rad.cfg.name)
+	enc.KV("status", rad.TaskStatus())
+	enc.KV("thread", rad.cfg.thread)
+	enc.KV("udp", rad.cfg.FxConfig.UDP)
+	enc.KV("fastmode", rad.cfg.FxConfig.FastMode)
+	enc.KV("defaultTimeout", rad.cfg.FxConfig.DefaultTimeout.Milliseconds())
+	if rad.task == nil {
+		enc.KV("task", nil)
+	} else {
+		enc.KV("task_all_num", rad.task.Count_all)
+		enc.KV("task_success_num", rad.task.Count_success)
+		enc.KV("task_process", fmt.Sprintf("%0.2f", float64(rad.task.Count_success)/float64(rad.task.Count_all)*100))
+		enc.Raw("task", rad.task.info())
+	}
+	enc.End("}")
+	return enc.Bytes()
+}
+
 func (rad *Radar) TaskID() string {
 	if rad.task == nil {
 		return ""
 	}
 
-	return rad.task.Option.ID
+	return rad.task.Id
 }
 
 func (rad *Radar) TaskStatus() string {
@@ -115,15 +139,16 @@ func (rad *Radar) NewTask(target string) *Task {
 	opt := Option{
 		Target:  target,
 		Port:    "top1000",
+		Mode:    "pn", // syn or not
 		Httpx:   false,
 		Ping:    false,
 		Ctime:   time.Now(),
-		Rate:    1500,
+		Rate:    500,
 		Timeout: 800,
 		Pool: Pool{
-			Ping:   50,
-			Scan:   50,
-			Finger: 500,
+			Ping:   10,
+			Scan:   10,
+			Finger: 50,
 		},
 	}
 
@@ -134,10 +159,9 @@ func (rad *Radar) NewTask(target string) *Task {
 }
 
 func NewRadar(cfg *Config) *Radar {
-	naa := &Radar{
+	rad := &Radar{
 		cfg:    cfg,
 		Status: Idle,
 	}
-
-	return naa
+	return rad
 }
