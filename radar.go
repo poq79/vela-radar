@@ -90,7 +90,7 @@ func (rad *Radar) handle(s *Service) {
 	})
 	// todo upload (use tunnel)
 	// res, err := xEnv.Fetch("/api/v1/broker/proxy/siem/api/netapp/mono", bytes.NewReader(s.Bytes()), nil)
-	req, err := http.NewRequest("POST", "/api/netapp/mono", bytes.NewReader(s.Bytes()))
+	req, err := http.NewRequest("POST", rad.cfg.ReportUri, bytes.NewReader(s.Bytes()))
 	req.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		fmt.Println("NewRequest ERR  ", err)
@@ -181,12 +181,10 @@ func (rad *Radar) NewTask(target string) *Task {
 }
 
 func NewRadar(cfg *Config) *Radar {
-	d, err := xEnv.Doer("/api/v1/broker/proxy/siem/")
+	d, err := xEnv.Doer(cfg.ReportDoer)
 	if err != nil {
 		fmt.Println("xEnv.Doer ERR")
 	}
-	// report_doer_path
-	// report_path
 	rad := &Radar{
 		cfg:    cfg,
 		Status: Idle,

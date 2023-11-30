@@ -11,12 +11,14 @@ import (
 
 type Config struct {
 	//字段名
-	name     string
-	co       *lua.LState
-	thread   int
-	FxConfig *scan.Config
-	MinioCfg *util.MinioCfg
-	Chains   *pipe.Chains
+	name       string
+	co         *lua.LState
+	thread     int
+	FxConfig   *scan.Config
+	MinioCfg   *util.MinioCfg
+	ReportDoer string
+	ReportUri  string
+	Chains     *pipe.Chains
 }
 
 func NewConfig(L *lua.LState) *Config {
@@ -29,7 +31,9 @@ func NewConfig(L *lua.LState) *Config {
 			FastMode:       false,
 			UDP:            false,
 		},
-		MinioCfg: &util.MinioCfg{},
+		MinioCfg:   &util.MinioCfg{},
+		ReportDoer: "/api/v1/broker/proxy/siem/",
+		ReportUri:  "/api/netapp/mono",
 	}
 
 	tab := L.CheckTable(1)
@@ -113,7 +117,10 @@ func (cfg *Config) NewIndex(L *lua.LState, key string, val lua.LValue) {
 		cfg.FingerConfig(L, val)
 	case "minio":
 		cfg.MinioConfig(L, val)
-
+	case "reportDoer":
+		cfg.ReportDoer = val.String()
+	case "reportUri":
+		cfg.ReportUri = val.String()
 	//todo
 	default:
 		return

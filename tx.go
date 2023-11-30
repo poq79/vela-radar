@@ -37,7 +37,6 @@ func (tx *Tx) Web(s *Service) {
 			Miniocfg:  tx.Param.MinioCfg,
 		})
 	}
-	xEnv.Errorf("%+v", info)
 }
 
 func DoScreenshot(s *Service, cfg *web.ScreenshotCfg) {
