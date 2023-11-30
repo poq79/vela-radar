@@ -19,6 +19,7 @@ import (
 	"github.com/vela-ssoc/vela-radar/port/syn"
 	"github.com/vela-ssoc/vela-radar/port/tcp"
 	"github.com/vela-ssoc/vela-radar/util"
+	"github.com/vela-ssoc/vela-radar/web"
 )
 
 type Dispatch interface {
@@ -107,11 +108,10 @@ func (t *Task) GenRun() {
 	}
 	t.Id = uuid.NewString()
 	audit.NewEvent("PortScanTask.start").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task start, id=%s", t.Id)).Log().Put()
-
+	fmt.Printf("scan task start, id=%s config: %s", t.Id, string(t.info()))
 	var ss Scanner
 	var err error
 	wg := new(WaitGroup)
-
 	// parse ip
 	it, startIp, err := iputil.NewIter(t.Option.Target)
 	if err != nil {
@@ -131,6 +131,7 @@ func (t *Task) GenRun() {
 		t.Dispatch.End()
 		return
 	}
+	// todo Support the input of multiple IP ranges
 	t.Count_all = it.TotalNum() * uint64(len(ports))
 	fingerPool, _ := thread.NewPoolWithFunc(t.Option.Pool.Finger, func(v interface{}) {
 		entry := v.(port.OpenIpPort)
@@ -223,14 +224,19 @@ done:
 	wg.Wait()
 	ss.Wait()
 	ss.Close()
-
+	if t.Option.Screenshot {
+		fmt.Println("close WebScreenshot Taskchan....")
+		close(web.WebScreenshotServer.Taskchan)
+		web.WebScreenshotServer.Wg.Wait()
+		web.WebScreenshotServer.Cfg = nil
+	}
 	timeuse := time.Since(t.Option.Ctime)
 	hours := int(timeuse.Hours())
 	minutes := int(timeuse.Minutes()) % 60
 	seconds := int(timeuse.Seconds()) % 60
 	timeuseMsg := fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
 	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Id, timeuseMsg)).Log().Put()
-
+	fmt.Println(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Id, timeuseMsg))
 	t.Dispatch.End()
 	// audit.Debug("task end").From(t.co.CodeVM()).Put()
 }

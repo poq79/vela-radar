@@ -47,6 +47,12 @@ func (t *Task) rateL(L *lua.LState) int {
 	return 1
 }
 
+func (t *Task) screenshotL(L *lua.LState) int {
+	t.Option.Screenshot = L.IsTrue(1)
+	L.Push(t)
+	return 1
+}
+
 func (t *Task) excludeL(L *lua.LState) int {
 	excludeip := L.CheckString(1)
 	t.Option.ExcludedTarget = excludeip
@@ -83,6 +89,8 @@ func (t *Task) Index(L *lua.LState, key string) lua.LValue {
 		return lua.NewFunction(t.poolL)
 	case "ping":
 		return lua.NewFunction(t.pingL)
+	case "screenshot":
+		return lua.NewFunction(t.screenshotL)
 	case "run":
 		return lua.NewFunction(t.runL)
 	default:

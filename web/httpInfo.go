@@ -92,7 +92,12 @@ goReq:
 			fau := finder.FindFaviconUrl(string(body))
 			if fau != "" {
 				if !strings.HasPrefix(fau, "http") {
-					fau = resp.Request.URL.String() + fau
+					u := resp.Request.URL.String()
+					if strings.HasSuffix("/", u) || strings.HasPrefix("/", fau) {
+						fau = u[:len(u)-1] + fau
+					} else {
+						fau = resp.Request.URL.String() + fau
+					}
 				}
 				_, body2, err2 := getReq(fau)
 				httpInfo.FaviconMH3 = finder.Mmh3Hash32(finder.StandBase64(body2))
