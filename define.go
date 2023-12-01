@@ -91,6 +91,12 @@ func (rad *Radar) TaskHandle(ctx *fasthttp.RequestCtx) error {
 			} else {
 				// return errors.New(init_err)
 			}
+		case "screenshot":
+			if v, ok := value.(bool); ok {
+				rad.task.Option.Screenshot = v
+			} else {
+				// return errors.New(init_err)
+			}
 		case "pool_ping":
 			if v, ok := value.(int); ok {
 				rad.task.Option.set_pool_ping(v)

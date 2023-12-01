@@ -1,19 +1,25 @@
 package radar
 
-import "time"
+import (
+	"time"
+
+	"github.com/vela-ssoc/vela-radar/util"
+)
 
 type Option struct {
-	Location       string    `json:"location"`
-	Mode           string    `json:"mode"`
-	Target         string    `json:"target"`
-	ExcludedTarget string    `json:"exclude_target"`
-	Port           string    `json:"port"`
-	Rate           int       `json:"rate"`
-	Timeout        int       `json:"timeout"`
-	Httpx          bool      `json:"httpx"`
-	Ping           bool      `json:"ping"`
-	Pool           Pool      `json:"pool"`
-	Ctime          time.Time `json:"-"`
+	Location       string        `json:"location"`
+	Mode           string        `json:"mode"`
+	Target         string        `json:"target"`
+	ExcludedTarget string        `json:"exclude_target"`
+	Port           string        `json:"port"`
+	Rate           int           `json:"rate"`
+	Timeout        int           `json:"timeout"`
+	Httpx          bool          `json:"httpx"`
+	Ping           bool          `json:"ping"`
+	Screenshot     bool          `json:"screenshot"`
+	Pool           Pool          `json:"pool"`
+	MinioCfg       util.MinioCfg `json:"-"`
+	Ctime          time.Time     `json:"-"`
 }
 
 func (o *Option) set_rate(n int) {

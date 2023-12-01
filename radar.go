@@ -1,9 +1,11 @@
 package radar
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/netip"
 	"reflect"
 	"sync/atomic"
@@ -13,6 +15,7 @@ import (
 	"github.com/vela-ssoc/vela-kit/lua"
 	"github.com/vela-ssoc/vela-radar/fingerprintx/plugins"
 	"github.com/vela-ssoc/vela-radar/fingerprintx/scan"
+	tunnel "github.com/vela-ssoc/vela-tunnel"
 )
 
 var typeof = reflect.TypeOf((*Radar)(nil)).String()
@@ -27,6 +30,7 @@ type Radar struct {
 	Status uint32
 	cfg    *Config
 	task   *Task
+	dr     tunnel.Doer
 }
 
 func (rad *Radar) IsWorking() bool {
@@ -79,9 +83,26 @@ func (rad *Radar) Catch(err error) {
 }
 
 func (rad *Radar) handle(s *Service) {
+	// todo ignore (use cnd )
+
 	rad.cfg.Chains.Do(s, rad.cfg.co, func(err error) {
 		rad.Exception(err)
 	})
+	// todo upload (use tunnel)
+	// res, err := xEnv.Fetch("/api/v1/broker/proxy/siem/api/netapp/mono", bytes.NewReader(s.Bytes()), nil)
+	req, err := http.NewRequest("POST", rad.cfg.ReportUri, bytes.NewReader(s.Bytes()))
+	req.Header.Set("Content-Type", "application/json")
+	if err != nil {
+		fmt.Println("NewRequest ERR  ", err)
+		return
+	}
+	res, err := rad.dr.Do(req)
+	if err != nil {
+		fmt.Println(err)
+	}
+	if res.StatusCode != 200 {
+		fmt.Println("upload fail, statusCode:%d", res.StatusCode)
+	}
 }
 
 func (rad *Radar) End() {
@@ -150,6 +171,7 @@ func (rad *Radar) NewTask(target string) *Task {
 			Scan:   10,
 			Finger: 50,
 		},
+		MinioCfg: *rad.cfg.MinioCfg,
 	}
 
 	ctx, cancel := context.WithCancel(xEnv.Context())
@@ -159,9 +181,14 @@ func (rad *Radar) NewTask(target string) *Task {
 }
 
 func NewRadar(cfg *Config) *Radar {
+	d, err := xEnv.Doer(cfg.ReportDoer)
+	if err != nil {
+		fmt.Println("xEnv.Doer ERR")
+	}
 	rad := &Radar{
 		cfg:    cfg,
 		Status: Idle,
+		dr:     d,
 	}
 	return rad
 }
