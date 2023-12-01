@@ -186,7 +186,7 @@ func (t *Task) GenRun() {
 
 		if ok {
 			wg.Scan.Add(1)
-			scan.Invoke(ip)
+			scanner(ip)
 		}
 	})
 	defer ping.Release()
@@ -199,7 +199,7 @@ func (t *Task) GenRun() {
 		default:
 			ip := make(net.IP, len(it.GetIpByIndex(0)))
 			copy(ip, it.GetIpByIndex(shuffle.Get(i))) // Note: dup copy []byte when concurrent (GetIpByIndex not to do dup copy)
-			if !t.Option.Ping {
+			if t.Option.Ping {
 				wg.Ping.Add(1)
 				_ = ping.Invoke(ip)
 			} else {
