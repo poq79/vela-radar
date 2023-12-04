@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,20 +51,6 @@ type Pool struct {
 	Finger int `json:"finger"`
 }
 
-type Option struct {
-	ID       string `json:"id"`
-	Location string `json:"location"`
-	Mode     string `json:"mode"`
-	Target   string `json:"target"`
-	Port     string `json:"port"`
-	Rate     int    `json:"rate"`
-	Timeout  int    `json:"timeout"`
-	Httpx    bool   `json:"httpx"`
-	Ping     bool   `json:"pring"`
-	Pool     Pool   `json:"pool"`
-	Ctime    time.Time
-}
-
 type Scanner interface {
 	Scan(net.IP, uint16) error
 	WaitLimiter() error
@@ -72,13 +59,18 @@ type Scanner interface {
 }
 
 type Task struct {
-	co        *lua.LState
-	Option    Option
-	Dispatch  Dispatch
-	Worker    Worker
-	WaitGroup WaitGroup
-	ctx       context.Context
-	cancel    context.CancelFunc
+	Name          string
+	Id            string
+	co            *lua.LState
+	Count_all     uint64
+	Count_success uint64
+	rad           *Radar
+	Option        Option
+	Dispatch      Dispatch
+	Worker        Worker
+	WaitGroup     WaitGroup
+	ctx           context.Context
+	cancel        context.CancelFunc
 }
 
 func (t *Task) String() string                         { return "" }
@@ -99,9 +91,10 @@ func (t *Task) close() error {
 func (t *Task) info() []byte {
 	enc := kind.NewJsonEncoder()
 	enc.Tab("")
-	enc.KV("id", t.Option.ID)
+	enc.KV("name", t.Name)
+	enc.KV("id", t.Id)
 	enc.KV("status", "working")
-	enc.KV("ctime", t.Option.Ctime)
+	enc.KV("start_time", t.Option.Ctime.Format("2006-01-02 15:04:05"))
 	enc.Raw("option", util.ToJsonBytes(t.Option))
 	enc.End("}")
 	return enc.Bytes()
@@ -112,25 +105,38 @@ func (t *Task) GenRun() {
 		xEnv.Errorf("%s dispatch got nil")
 		return
 	}
-	t.Option.ID = uuid.NewString()
+
+	if t.rad.screen != nil {
+		t.rad.screen.Start()
+	}
+
+	t.Id = uuid.NewString()
+	audit.NewEvent("PortScanTask.start").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task start, id=%s", t.Id)).Log().Put()
+	//fmt.Printf("scan task start, id=%s config: %s", t.Id, string(t.info()))
 	var ss Scanner
 	var err error
 	wg := new(WaitGroup)
-
 	// parse ip
 	it, startIp, err := iputil.NewIter(t.Option.Target)
 	if err != nil {
 		xEnv.Errorf("task ip range parse fail %v", err)
+		audit.NewEvent("PortScanTask.error").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("task ip range parse fail %v", err)).Log().Put()
+		t.Dispatch.End()
 		return
 	}
+
+	excluded_ip_map := util.IpstrWithCommaToMap(t.Option.ExcludedTarget)
 
 	// 解析端口字符串并且优先发送 TopTcpPorts 中的端口, eg: 1-65535,top1000
 	ports, err := port.ShuffleParseAndMergeTopPorts(t.Option.Port)
 	if err != nil {
 		xEnv.Errorf("task port range parse fail %v", err)
+		audit.NewEvent("PortScanTask.error").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("task port range parse fail %v", err)).Log().Put()
+		t.Dispatch.End()
 		return
 	}
-
+	// todo Support the input of multiple IP ranges
+	t.Count_all = it.TotalNum() * uint64(len(ports))
 	fingerPool, _ := thread.NewPoolWithFunc(t.Option.Pool.Finger, func(v interface{}) {
 		entry := v.(port.OpenIpPort)
 		t.Dispatch.Callback(&Tx{Entry: entry, Param: t.Option})
@@ -139,6 +145,10 @@ func (t *Task) GenRun() {
 	defer fingerPool.Release()
 
 	call := func(v port.OpenIpPort) {
+		atomic.AddUint64(&t.Count_success, 1)
+		if v.Ip == nil {
+			return
+		}
 		wg.FingerPrint.Add(1)
 		fingerPool.Invoke(v)
 	}
@@ -186,7 +196,9 @@ func (t *Task) GenRun() {
 
 		if ok {
 			wg.Scan.Add(1)
-			scanner(ip)
+			scan.Invoke(ip)
+		} else {
+			atomic.AddUint64(&t.Count_success, uint64(len(ports)))
 		}
 	})
 	defer ping.Release()
@@ -199,7 +211,10 @@ func (t *Task) GenRun() {
 		default:
 			ip := make(net.IP, len(it.GetIpByIndex(0)))
 			copy(ip, it.GetIpByIndex(shuffle.Get(i))) // Note: dup copy []byte when concurrent (GetIpByIndex not to do dup copy)
-			if t.Option.Ping {
+			// 黑名单ip
+			if excluded_ip_map[ip.String()] {
+				atomic.AddUint64(&t.Count_success, uint64(len(ports)))
+			} else if t.Option.Ping {
 				wg.Ping.Add(1)
 				_ = ping.Invoke(ip)
 			} else {
@@ -213,14 +228,12 @@ done:
 	wg.Wait()
 	ss.Wait()
 	ss.Close()
-
 	timeuse := time.Since(t.Option.Ctime)
 	hours := int(timeuse.Hours())
 	minutes := int(timeuse.Minutes()) % 60
 	seconds := int(timeuse.Seconds()) % 60
 	timeuseMsg := fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
-	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Option.ID, timeuseMsg)).Log().Put()
-
+	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Id, timeuseMsg)).Log().Put()
 	t.Dispatch.End()
 	// audit.Debug("task end").From(t.co.CodeVM()).Put()
 }

@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/vela-ssoc/vela-radar/port"
-	limiter "golang.org/x/time/rate"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/vela-ssoc/vela-radar/port"
+	limiter "golang.org/x/time/rate"
 )
 
 var DefaultTcpOption = port.Option{
@@ -55,6 +56,34 @@ func (ts *TcpScanner) Scan(ip net.IP, dst uint16) error {
 	if ts.isDone {
 		return errors.New("scanner is closed")
 	}
+	ts.wg.Add(1)
+	go func() {
+		defer ts.wg.Done()
+		//fmt.Println(1)
+		openIpPort := port.OpenIpPort{
+			Ip:   ip,
+			Port: dst,
+		}
+		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, dst), ts.timeout)
+		if conn != nil {
+			conn.Close()
+		} else {
+			ts.callback(port.OpenIpPort{
+				Ip:   nil,
+				Port: 0,
+			})
+			return
+		}
+		ts.callback(openIpPort)
+	}()
+	return nil
+}
+
+/*
+func (ts *TcpScanner) Scan(ip net.IP, dst uint16) error {
+	if ts.isDone {
+		return errors.New("scanner is closed")
+	}
 	//fmt.Println(1)
 	openIpPort := port.OpenIpPort{
 		Ip:   ip,
@@ -71,7 +100,7 @@ func (ts *TcpScanner) Scan(ip net.IP, dst uint16) error {
 	conn.Close()
 	ts.callback(openIpPort)
 	return nil
-}
+}*/
 
 func (ts *TcpScanner) Wait() {
 	ts.wg.Wait()

@@ -1,19 +1,24 @@
 package radar
 
 import (
+	"time"
+
 	"github.com/vela-ssoc/vela-kit/lua"
 	"github.com/vela-ssoc/vela-kit/pipe"
 	"github.com/vela-ssoc/vela-radar/fingerprintx/scan"
-	"time"
+	"github.com/vela-ssoc/vela-radar/util"
 )
 
 type Config struct {
 	//字段名
-	name     string
-	co       *lua.LState
-	thread   int
-	FxConfig *scan.Config
-	Chains   *pipe.Chains
+	name       string
+	co         *lua.LState
+	thread     int
+	FxConfig   *scan.Config
+	MinioCfg   *util.MinioCfg
+	ReportDoer string
+	ReportUri  string
+	Chains     *pipe.Chains
 }
 
 func NewConfig(L *lua.LState) *Config {
@@ -26,6 +31,9 @@ func NewConfig(L *lua.LState) *Config {
 			FastMode:       false,
 			UDP:            false,
 		},
+		MinioCfg:   &util.MinioCfg{},
+		ReportDoer: "/api/v1/broker/proxy/siem/",
+		ReportUri:  "/api/netapp/mono",
 	}
 
 	tab := L.CheckTable(1)
@@ -72,6 +80,29 @@ func (cfg *Config) FingerConfig(L *lua.LState, val lua.LValue) {
 
 }
 
+func (cfg *Config) MinioConfig(L *lua.LState, val lua.LValue) {
+	if val.Type() != lua.LTTable {
+		L.RaiseError("minio config must table , got %s", val.Type().String())
+		return
+	}
+	tab := val.(*lua.LTable)
+	tab.Range(func(key string, value lua.LValue) {
+		switch key {
+		case "accessKey":
+			cfg.MinioCfg.AccessKey = lua.IsString(value)
+		case "secretKey":
+			cfg.MinioCfg.SecretKey = lua.IsString(value)
+		case "endpoint":
+			cfg.MinioCfg.Endpoint = lua.IsString(value)
+		case "name":
+			cfg.MinioCfg.Name = lua.IsString(value)
+		case "useSSL":
+			cfg.MinioCfg.UseSSL = lua.IsTrue(value)
+		}
+	})
+
+}
+
 func (cfg *Config) NewIndex(L *lua.LState, key string, val lua.LValue) {
 	switch key {
 	case "name":
@@ -84,7 +115,12 @@ func (cfg *Config) NewIndex(L *lua.LState, key string, val lua.LValue) {
 		cfg.thread = n
 	case "finger":
 		cfg.FingerConfig(L, val)
-
+	case "minio":
+		cfg.MinioConfig(L, val)
+	case "reportDoer":
+		cfg.ReportDoer = val.String()
+	case "reportUri":
+		cfg.ReportUri = val.String()
 	//todo
 	default:
 		return

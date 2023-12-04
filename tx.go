@@ -14,10 +14,11 @@ type Tx struct {
 
 func (tx *Tx) Web(s *Service) {
 
-	info, ok := web.ProbeHttpInfo(tx.Entry.Ip, tx.Entry.Port, s.Protocol, time.Second*2)
+	info, ok := web.ProbeHttpInfo(s.IP, s.Port, s.Protocol, time.Second*2)
 	if !ok {
+		// fmt.Printf("%s:%d  ProbeHttpInfo not OK", s.IP.String(), s.Port)
 		return
 	}
+	// fmt.Printf("%s:%d  ProbeHttpInfo...\n", s.IP.String(), s.Port)
 	s.HTTPInfo = info
-	xEnv.Errorf("%+v", info)
 }

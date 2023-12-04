@@ -1,6 +1,11 @@
 package util
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+
+	"github.com/vela-ssoc/vela-kit/iputil"
+)
 
 func ToJsonStr(i interface{}) string {
 	jsonBytes, err := json.Marshal(i)
@@ -17,4 +22,24 @@ func ToJsonBytes(i interface{}) []byte {
 		return []byte{}
 	}
 	return jsonBytes
+}
+
+func IpstrWithCommaToMap(ipstr string) map[string]bool {
+	result := make(map[string]bool)
+
+	items := strings.Split(ipstr, ",")
+	for _, ip := range items {
+		if iputil.IsIPv4(ip) {
+			result[ip] = true
+		} else {
+			ip_set, err := iputil.GenIpSet(ip)
+			if err != nil {
+				continue
+			}
+			for _, _ip := range ip_set {
+				result[_ip.String()] = true
+			}
+		}
+	}
+	return result
 }

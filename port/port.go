@@ -1,7 +1,6 @@
 package port
 
 import (
-	"encoding/json"
 	"errors"
 	"net"
 	"strconv"
@@ -56,7 +55,7 @@ var TopTcpPorts = []uint16{
 	5214, 5221, 5222, 5225, 5226, 5269, 5280, 5298, 5357, 5405, 5414, 5431, 5432,
 	5440, 5500, 5510, 5544, 5550, 5555, 5560, 5566, 5631, 5633, 5666, 5678, 5679,
 	5718, 5730, 5800, 5801, 5802, 5810, 5811, 5815, 5822, 5825, 5850, 5859, 5862,
-	5877, 5900, 5901, 5902, 5903, 5904, 5906, 5907, 5910, 5911, 5915, 5922, 5925,
+	5877, 5901, 5902, 5903, 5904, 5906, 5907, 5910, 5911, 5915, 5922, 5925,
 	5950, 5952, 5959, 5960, 5961, 5962, 5963, 5987, 5988, 5989, 5998, 5999, 6000,
 	6001, 6002, 6003, 6004, 6005, 6006, 6007, 6009, 6025, 6059, 6100, 6101, 6106,
 	6112, 6123, 6129, 6156, 6346, 6389, 6379, 6502, 6510, 6543, 6547, 6565, 6566, 6567,
@@ -68,8 +67,8 @@ var TopTcpPorts = []uint16{
 	8084, 8085, 8086, 8087, 8088, 8089, 8090, 8093, 8099, 8100, 8180, 8181, 8192,
 	8193, 8194, 8200, 8222, 8254, 8290, 8291, 8292, 8300, 8333, 8383, 8400, 8402,
 	8443, 8500, 8600, 8649, 8651, 8652, 8654, 8701, 8800, 8873, 8888, 8899, 8994,
-	9000, 9001, 9002, 9003, 9009, 9010, 9011, 9040, 9050, 9071, 9080, 9081, 9090,
-	9091, 9099, 9100, 9101, 9102, 9103, 9110, 9111, 9200, 9207, 9220, 9290, 9415,
+	9000, 9001, 9002, 9003, 9009, 9010, 9011, 9040, 9050, 9071, 9080, 9081, 9082, 9090,
+	9091, 9099, 9101, 9102, 9103, 9110, 9111, 9200, 9207, 9220, 9290, 9415,
 	9418, 9485, 9500, 9502, 9503, 9535, 9575, 9593, 9594, 9595, 9618, 9666, 9876,
 	9877, 9878, 9898, 9900, 9917, 9929, 9943, 9944, 9968, 9998, 9999, 10000, 10001,
 	10002, 10003, 10004, 10009, 10010, 10012, 10024, 10025, 10082, 10180, 10215,
@@ -89,6 +88,40 @@ var TopTcpPorts = []uint16{
 	52848, 52869, 54045, 54328, 55055, 55056, 55555, 55600, 56737, 56738, 57294,
 	57797, 58080, 60020, 60443, 61532, 61900, 62078, 63331, 64623, 64680, 65000,
 	65129, 65389}
+
+var TopUdpPorts = []uint16{
+	161,   /* SNMP - should be found on all network equipment */
+	135,   /* MS-RPC - should be found on all modern Windows */
+	500,   /* ISAKMP - for establishing IPsec tunnels */
+	137,   /* NetBIOS-NameService - should be found on old Windows */
+	138,   /* NetBIOS-Datagram - should be found on old Windows */
+	445,   /* SMB datagram service */
+	67,    /* DHCP */
+	53,    /* DNS */
+	1900,  /* UPnP - Microsoft-focused local discovery */
+	5353,  /* mDNS - Apple-focused local discovery */
+	4500,  /* nat-t-ike - IPsec NAT traversal */
+	514,   /* syslog - all Unix machiens */
+	69,    /* TFTP */
+	49152, /* first of modern ephemeral ports */
+	631,   /* IPP - printing protocol for Linux */
+	123,   /* NTP network time protocol */
+	1434,  /* MS-SQL server*/
+	520,   /* RIP - routers use this protocol sometimes */
+	7,     /* Echo */
+	111,   /* SunRPC portmapper */
+	2049,  /* SunRPC NFS */
+	5683,  /* COAP */
+	11211, /* memcached */
+	1701,  /* L2TP */
+	27960, /* quaked amplifier */
+	1645,  /* RADIUS */
+	1812,  /* RADIUS */
+	1646,  /* RADIUS */
+	1813,  /* RADIUS */
+	3343,  /* Microsoft Cluster Services */
+	2535,  /* MADCAP rfc2730 TODO FIXME */
+}
 
 type Scanner interface {
 	Close()
@@ -170,14 +203,6 @@ func (hi *HttpInfo) String() string {
 	// return buf.String()
 
 	return util.ToJsonStr(hi)
-}
-
-func (hi *HttpInfo) Json() []byte {
-	jsonBytes, err := json.Marshal(hi)
-	if err != nil {
-		return []byte{}
-	}
-	return jsonBytes
 }
 
 // ParsePortRangeStr 解析端口字符串

@@ -2,6 +2,7 @@ package radar
 
 import (
 	"github.com/vela-ssoc/vela-kit/lua"
+	"github.com/vela-ssoc/vela-radar/web"
 	"time"
 )
 
@@ -57,6 +58,44 @@ func (rad *Radar) startL(L *lua.LState) int {
 	return 0
 }
 
+func (rad *Radar) chromeL(L *lua.LState) int {
+	//todo create chrome object
+	cfg := &web.ScreenshotCfg{
+		Proxy:     "",
+		Chrome:    false,
+		Thread:    5,
+		Timeout:   5,
+		ResultDir: "res",
+		Save:      true,
+		Debug:     true,
+		Miniocfg:  rad.cfg.MinioCfg,
+	}
+
+	v := L.Get(1)
+	switch v.Type() {
+	case lua.LTTable:
+		v.(*lua.LTable).Range(func(k string, value lua.LValue) {
+			cfg.NewIndex(L, k, value)
+		})
+
+	default:
+		goto DONE
+
+	}
+
+DONE:
+	s, err := web.NewScreenServer(L.Context(), cfg, xEnv)
+	if err != nil {
+		L.RaiseError("screen server init fail %v", err)
+		return 0
+	}
+
+	rad.screen = s
+	return 1
+}
+
+// rad.chrome("/aab//cc")
+
 func (rad *Radar) Index(L *lua.LState, key string) lua.LValue {
 	switch key {
 	case "start":
@@ -69,6 +108,10 @@ func (rad *Radar) Index(L *lua.LState, key string) lua.LValue {
 
 	case "define":
 		return lua.NewFunction(rad.defineL)
+
+	case "chrome":
+		return lua.NewFunction(rad.chromeL)
+
 	default:
 		//todo
 	}
