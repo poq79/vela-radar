@@ -64,6 +64,13 @@ func (t *Task) excludeL(L *lua.LState) int {
 	return 1
 }
 
+func (t *Task) fingerDBL(L *lua.LState) int {
+	FingerDB := L.CheckString(1)
+	t.Option.FingerDB = FingerDB
+	L.Push(t)
+	return 1
+}
+
 func (t *Task) poolL(L *lua.LState) int {
 	scan := L.IsInt(1)
 	finger := L.IsInt(2)
@@ -95,6 +102,8 @@ func (t *Task) Index(L *lua.LState, key string) lua.LValue {
 		return lua.NewFunction(t.pingL)
 	case "screenshot":
 		return lua.NewFunction(t.screenshotL)
+	case "fingerDB":
+		return lua.NewFunction(t.fingerDBL)
 	case "run":
 		return lua.NewFunction(t.runL)
 	default:

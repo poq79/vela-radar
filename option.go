@@ -16,6 +16,7 @@ type Option struct {
 	Timeout        int           `json:"timeout"`
 	Httpx          bool          `json:"httpx"`
 	Ping           bool          `json:"ping"`
+	FingerDB       string        `json:"fingerDB"`
 	Screenshot     bool          `json:"screenshot"`
 	Pool           Pool          `json:"pool"`
 	MinioCfg       util.MinioCfg `json:"-"`

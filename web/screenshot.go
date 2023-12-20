@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/vela-ssoc/vela-kit/fileutil"
-	"github.com/vela-ssoc/vela-kit/lua"
-	"github.com/vela-ssoc/vela-kit/vela"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/vela-ssoc/vela-kit/fileutil"
+	"github.com/vela-ssoc/vela-kit/lua"
+	"github.com/vela-ssoc/vela-kit/vela"
 
 	"github.com/chromedp/chromedp"
 	log "github.com/sirupsen/logrus"
@@ -22,7 +23,7 @@ type ScreenshotCfg struct {
 	Chrome    bool
 	Thread    int
 	Timeout   int
-	Path      string
+	Path      string //chrome的安装路径, 安装在默认路径则不配置
 	ResultDir string
 	Save      bool
 	Debug     bool
@@ -37,6 +38,8 @@ func (s *ScreenshotCfg) NewIndex(L *lua.LState, key string, val lua.LValue) {
 		s.Thread = lua.IsInt(val)
 	case "timeout":
 		s.Timeout = lua.IsInt(val)
+	case "resultDir":
+		s.ResultDir = lua.IsString(val)
 	case "debug":
 		s.Debug = lua.IsTrue(val)
 
@@ -130,7 +133,7 @@ func (st *ScreenshotServer) navigate(workerNum int, option []chromedp.ExecAlloca
 
 	screen := func(target *ScreenshotTask) error {
 		var buf []byte
-		target.TargetCtx, target.TimeoutCancel = context.WithTimeout(ctx, 10*time.Second)
+		target.TargetCtx, target.TimeoutCancel = context.WithTimeout(ctx, time.Duration(st.Cfg.Timeout)*time.Second)
 		if err := chromedp.Run(target.TargetCtx, fullScreenshot(target.Url, 100, &buf)); err != nil {
 			st.Logger.Errorf("[-] Failed to take (URL:%s) screenshot: %v", target.Url, err)
 			target.Done <- -1

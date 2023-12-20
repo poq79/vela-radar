@@ -5,14 +5,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/vela-ssoc/vela-radar/web"
 	"net/http"
 	"net/netip"
 	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/vela-ssoc/vela-radar/web"
+	"github.com/vela-ssoc/vela-radar/web/finder"
 
 	"github.com/vela-ssoc/vela-kit/kind"
 	"github.com/vela-ssoc/vela-kit/lua"
@@ -226,9 +228,25 @@ func (rad *Radar) NewTask(target string) *Task {
 			Scan:   10,
 			Finger: 50,
 		},
+		FingerDB: "",
 		MinioCfg: *rad.cfg.MinioCfg,
 	}
-
+	if opt.FingerDB != "" {
+		info, err := xEnv.Third(opt.FingerDB)
+		if err != nil {
+			xEnv.Errorf("get 3rd %s ERROR %v", opt.FingerDB, err)
+		}
+		err = finder.LoadWebFingerData("./3rd/" + info.Name)
+		if err != nil {
+			xEnv.Errorf("load WebFingerData [%s] ERROR", info.Name)
+		}
+		xEnv.Infof("use 3rd WebFingerData [%s]..", info.Name)
+	} else {
+		err := finder.ParseWebFingerData(web.FingerData)
+		if err != nil {
+			xEnv.Errorf("get Built-in FingerData ERROR %v", opt.FingerDB, err)
+		}
+	}
 	ctx, cancel := context.WithCancel(xEnv.Context())
 	t := &Task{Option: opt, Dispatch: rad, ctx: ctx, cancel: cancel, co: xEnv.Clone(rad.cfg.co), rad: rad}
 	rad.task = t

@@ -85,6 +85,12 @@ func (rad *Radar) TaskHandle(ctx *fasthttp.RequestCtx) error {
 			} else {
 				// return errors.New(init_err)
 			}
+		case "fingerDB":
+			if v, ok := value.(string); ok {
+				rad.task.Option.FingerDB = v
+			} else {
+				// return errors.New(init_err)
+			}
 		case "ping":
 			if v, ok := value.(bool); ok {
 				rad.task.Option.Ping = v

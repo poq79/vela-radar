@@ -16,9 +16,12 @@ import (
 )
 
 //go:embed finger.json
-var fD []byte
+var FingerData []byte
 
-var httpsTopPort = []uint16{443, 4443, 1443, 8443}
+const (
+	refusedStr   = "refused"
+	ioTimeoutStr = "i/o timeout"
+)
 
 var httpClient *http.Client
 
@@ -76,15 +79,12 @@ goReq:
 		httpInfo.Title = ExtractTitle(body)
 		httpInfo.Body = string(body)
 		httpInfo.Header = getHeadersString(resp)
-		// todo: screenshot the webpage and upload png return url
-		// httpInfo.Screenshot_url = Screenshot(httpInfo.Url)
-
 		if resp.TLS != nil && len(resp.TLS.PeerCertificates) > 0 {
 			httpInfo.TLSCommonName = resp.TLS.PeerCertificates[0].Subject.CommonName
 			httpInfo.TLSDNSNames = resp.TLS.PeerCertificates[0].DNSNames
 		}
 		// finger
-		err = finder.ParseWebFingerData(fD)
+		// err = finder.ParseWebFingerData(FingerData)
 		if err == nil {
 			resp.Body = io.NopCloser(bytes.NewReader(body))
 			httpInfo.Fingerprints = finder.WebFingerIdent(resp)

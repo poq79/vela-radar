@@ -10,7 +10,8 @@ Active scanning of network assets
 2023-11-17 &emsp; v0.2.0 &emsp; 实现远程调用的内部API, 实时进度显示  
 2023-11-20 &emsp; v0.2.1 &emsp; 实现禁止扫描的白名单ip设置  
 2023-11-29 &emsp; v0.3.0 &emsp; 实现web站点截图功能  
-2023-11-30 &emsp; v0.3.1 &emsp; 实现通过内部tunnel上报, web站点截图功能优化 
+2023-11-30 &emsp; v0.3.1 &emsp; 实现通过内部tunnel上报, web站点截图功能优化
+2023-12-20 &emsp; v0.3.2 &emsp; web指纹加载逻辑升级, 支持自定义三方指纹库动态加载和更新
 
 
 ## 功能
@@ -23,6 +24,8 @@ Active scanning of network assets
 7. 支持CIDR和地址范围(192.168.1.1-100)格式的目标资产输入
 8. 支持禁止扫描的白名单ip设置, 支持ip,CIDR,地址范围以及用","分割组合输入
 9. web站点截图功能, 并上传至minio图床
+10. 支持三方指纹库动态加载和更新(基于三方依赖)
+
 
 ## todo
 1. 设置扫描时间段(定时暂停与开始)
@@ -53,6 +56,7 @@ Active scanning of network assets
 `rate`  基础发包速率   
 `timeout`  超时时间(ms)  
 `httpx`  是否http指纹探测  
+`fingerDB`  指定web指纹库三方依赖   
 `screenshot`  是否开启站点截图功能  
 `ping`  是否开启ping存活探测  
 `pool_ping`  ping探测协程数      

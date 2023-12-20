@@ -1,9 +1,10 @@
 package radar
 
 import (
+	"time"
+
 	"github.com/vela-ssoc/vela-kit/lua"
 	"github.com/vela-ssoc/vela-radar/web"
-	"time"
 )
 
 func (rad *Radar) Type() string {
@@ -64,13 +65,12 @@ func (rad *Radar) chromeL(L *lua.LState) int {
 		Proxy:     "",
 		Chrome:    false,
 		Thread:    5,
-		Timeout:   5,
+		Timeout:   10,
 		ResultDir: "res",
 		Save:      true,
 		Debug:     true,
 		Miniocfg:  rad.cfg.MinioCfg,
 	}
-
 	v := L.Get(1)
 	switch v.Type() {
 	case lua.LTTable:
