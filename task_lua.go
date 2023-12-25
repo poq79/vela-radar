@@ -3,11 +3,8 @@ package radar
 import "github.com/vela-ssoc/vela-kit/lua"
 
 func (t *Task) runL(L *lua.LState) int {
-	if t.Option.Screenshot {
-
-	}
-
 	go t.GenRun()
+	go t.executionTimeMonitor()
 	return 0
 }
 
@@ -82,6 +79,17 @@ func (t *Task) poolL(L *lua.LState) int {
 	return 1
 }
 
+func (t *Task) excludeTimeRangeL(L *lua.LState) int {
+	Daily := L.CheckString(1)
+	Begin := L.CheckString(2)
+	End := L.CheckString(3)
+	t.Option.ExcludeTimeRange.Daily = Daily
+	t.Option.ExcludeTimeRange.Begin = Begin
+	t.Option.ExcludeTimeRange.End = End
+	L.Push(t)
+	return 1
+}
+
 func (t *Task) Index(L *lua.LState, key string) lua.LValue {
 	switch key {
 	case "exclude":
@@ -104,6 +112,8 @@ func (t *Task) Index(L *lua.LState, key string) lua.LValue {
 		return lua.NewFunction(t.screenshotL)
 	case "fingerDB":
 		return lua.NewFunction(t.fingerDBL)
+	case "excludeTimeRange":
+		return lua.NewFunction(t.excludeTimeRangeL)
 	case "run":
 		return lua.NewFunction(t.runL)
 	default:

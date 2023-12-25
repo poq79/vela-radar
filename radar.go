@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/vela-ssoc/vela-radar/util"
 	"github.com/vela-ssoc/vela-radar/web"
 	"github.com/vela-ssoc/vela-radar/web/finder"
 
@@ -59,6 +60,7 @@ func (rad *Radar) Info() []byte {
 		enc.KV("task_all_num", rad.task.Count_all)
 		enc.KV("task_success_num", rad.task.Count_success)
 		enc.KV("task_process", fmt.Sprintf("%0.2f", float64(rad.task.Count_success)/float64(rad.task.Count_all)*100))
+		enc.KV("pause_signal", rad.task.Pause_signal)
 		enc.Raw("task", rad.task.info())
 	}
 	enc.End("}")
@@ -158,7 +160,7 @@ func (rad *Radar) handle(s *Service) {
 
 func (rad *Radar) End() {
 	atomic.StoreUint32(&rad.Status, Idle)
-
+	close(rad.task.executionTimeMonitorStopChan)
 	if rad.task.Option.Screenshot {
 		rad.screen.Close()
 	}
@@ -215,14 +217,15 @@ func (rad *Radar) Callback(tx *Tx) {
 
 func (rad *Radar) NewTask(target string) *Task {
 	opt := Option{
-		Target:  target,
-		Port:    "top1000",
-		Mode:    "pn", // syn or not
-		Httpx:   false,
-		Ping:    false,
-		Ctime:   time.Now(),
-		Rate:    500,
-		Timeout: 800,
+		Target:           target,
+		Port:             "top1000",
+		Mode:             "pn", // syn or not
+		Httpx:            false,
+		Ping:             false,
+		Ctime:            time.Now(),
+		Rate:             500,
+		Timeout:          800,
+		ExcludeTimeRange: util.TimeRange{},
 		Pool: Pool{
 			Ping:   10,
 			Scan:   10,
