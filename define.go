@@ -3,7 +3,6 @@ package radar
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/valyala/fasthttp"
 )
@@ -131,7 +130,7 @@ func (rad *Radar) TaskHandle(ctx *fasthttp.RequestCtx) error {
 
 func (rad *Radar) StatusHandle(ctx *fasthttp.RequestCtx) error {
 	info := rad.Info()
-	fmt.Println(string(info))
+	// fmt.Println(string(info))
 	ctx.Response.Header.SetContentType("application/json")
 	ctx.Response.SetBody(info)
 	return nil

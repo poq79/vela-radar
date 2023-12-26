@@ -105,13 +105,13 @@ func (t *Task) info() []byte {
 func (t *Task) executionTimeMonitor() {
 	t.executionTimeMonitorStopChan = make(chan struct{})
 	if t.Option.ExcludeTimeRange.Daily == "" {
-		fmt.Println("没有设置排除时间，直接执行")
+		// fmt.Println("没有设置排除时间，直接执行")
 		return
 	}
 	for {
 		select {
 		case <-t.executionTimeMonitorStopChan:
-			fmt.Println("扫描任务结束, 接收到终止信, 退出执行时间监控器协程")
+			// fmt.Println("扫描任务结束, 接收到终止信, 退出执行时间监控器协程")
 			return
 		default:
 			isInTimeRange, err := util.IsWithinRange(t.Option.ExcludeTimeRange)
