@@ -40,6 +40,26 @@ var portServiceOrder = map[uint16][]string{
 	49153: {"mongodb"},
 }
 
+type Action uint8
+
+const (
+	ActionRecv = Action(iota)
+	ActionSend
+)
+
+type ruleData struct {
+	Action  Action // send or recv
+	Data    []byte // send or match data
+	Regexps []*regexp.Regexp
+}
+
+type serviceRule struct {
+	Tls       bool
+	DataGroup []ruleData
+}
+
+var serviceRules = make(map[string]serviceRule)
+
 func init() {
 	// http
 	serviceRules["http"] = serviceRule{
@@ -62,7 +82,7 @@ func init() {
 		Tls:       true,
 		DataGroup: serviceRules["http"].DataGroup,
 	}
-
+	/* only use HTTP ruleData
 	// ssh
 	serviceRules["ssh"] = serviceRule{
 		Tls: false,
@@ -334,7 +354,7 @@ func init() {
 			},
 		},
 	}
-
+	*/
 	// onlyRecv
 	for k, m := range serviceRules {
 		if len(m.DataGroup) == 1 {

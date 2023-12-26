@@ -59,18 +59,20 @@ type Scanner interface {
 }
 
 type Task struct {
-	Name          string
-	Id            string
-	co            *lua.LState
-	Count_all     uint64
-	Count_success uint64
-	rad           *Radar
-	Option        Option
-	Dispatch      Dispatch
-	Worker        Worker
-	WaitGroup     WaitGroup
-	ctx           context.Context
-	cancel        context.CancelFunc
+	Name                         string
+	Id                           string
+	co                           *lua.LState
+	Count_all                    uint64
+	Count_success                uint64
+	Pause_signal                 int //暂停信号 1是机器自动暂停 2是用户人工手动暂停 0是正常运行
+	executionTimeMonitorStopChan chan struct{}
+	rad                          *Radar
+	Option                       Option
+	Dispatch                     Dispatch
+	Worker                       Worker
+	WaitGroup                    WaitGroup
+	ctx                          context.Context
+	cancel                       context.CancelFunc
 }
 
 func (t *Task) String() string                         { return "" }
@@ -100,7 +102,38 @@ func (t *Task) info() []byte {
 	return enc.Bytes()
 }
 
+func (t *Task) executionTimeMonitor() {
+	t.executionTimeMonitorStopChan = make(chan struct{})
+	if t.Option.ExcludeTimeRange.Daily == "" {
+		// fmt.Println("没有设置排除时间，直接执行")
+		return
+	}
+	for {
+		select {
+		case <-t.executionTimeMonitorStopChan:
+			// fmt.Println("扫描任务结束, 接收到终止信, 退出执行时间监控器协程")
+			return
+		default:
+			isInTimeRange, err := util.IsWithinRange(t.Option.ExcludeTimeRange)
+			if err != nil {
+				t.Pause_signal = 2
+				xEnv.Errorf("task execution time monitor fail %v", err)
+				return
+			}
+			if t.Pause_signal != 2 && isInTimeRange {
+				t.Pause_signal = 1
+			} else if t.Pause_signal != 2 && !isInTimeRange {
+				t.Pause_signal = 0
+			}
+			// 等待5秒
+			time.Sleep(5 * time.Second)
+		}
+
+	}
+}
+
 func (t *Task) GenRun() {
+
 	if t.Dispatch == nil {
 		xEnv.Errorf("%s dispatch got nil")
 		return
@@ -183,6 +216,9 @@ func (t *Task) GenRun() {
 	// host group scan func
 	scan, _ := thread.NewPoolWithFunc(t.Option.Pool.Scan, func(v interface{}) {
 		ip := v.(net.IP)
+		for t.Pause_signal == 1 {
+			time.Sleep(3 * time.Second)
+		}
 		scanner(ip)
 		wg.Scan.Done()
 	})
@@ -191,6 +227,9 @@ func (t *Task) GenRun() {
 	// Pool - ping and port scan
 	ping, _ := thread.NewPoolWithFunc(t.Option.Pool.Ping, func(v interface{}) {
 		ip := v.(net.IP)
+		for t.Pause_signal == 1 {
+			time.Sleep(3 * time.Second)
+		}
 		ok := host.IsLive(ip.String(), false, 800*time.Millisecond)
 		wg.Ping.Done()
 
@@ -198,7 +237,9 @@ func (t *Task) GenRun() {
 			wg.Scan.Add(1)
 			scan.Invoke(ip)
 		} else {
-			atomic.AddUint64(&t.Count_success, uint64(len(ports)))
+			// atomic.AddUint64(&t.Count_success, uint64(len(ports)))
+			atomic.AddUint64(&t.Count_success, 1)
+			atomic.AddUint64(&t.Count_all, uint64(1-len(ports)))
 		}
 	})
 	defer ping.Release()
@@ -212,8 +253,13 @@ func (t *Task) GenRun() {
 			ip := make(net.IP, len(it.GetIpByIndex(0)))
 			copy(ip, it.GetIpByIndex(shuffle.Get(i))) // Note: dup copy []byte when concurrent (GetIpByIndex not to do dup copy)
 			// 黑名单ip
+			for t.Pause_signal == 1 {
+				time.Sleep(3 * time.Second)
+			}
 			if excluded_ip_map[ip.String()] {
-				atomic.AddUint64(&t.Count_success, uint64(len(ports)))
+				// atomic.AddUint64(&t.Count_success, uint64(len(ports)))
+				atomic.AddUint64(&t.Count_success, 1)
+				atomic.AddUint64(&t.Count_all, uint64(1-len(ports)))
 			} else if t.Option.Ping {
 				wg.Ping.Add(1)
 				_ = ping.Invoke(ip)

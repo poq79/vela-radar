@@ -3,7 +3,6 @@ package radar
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/valyala/fasthttp"
 )
@@ -85,6 +84,12 @@ func (rad *Radar) TaskHandle(ctx *fasthttp.RequestCtx) error {
 			} else {
 				// return errors.New(init_err)
 			}
+		case "fingerDB":
+			if v, ok := value.(string); ok {
+				rad.task.Option.FingerDB = v
+			} else {
+				// return errors.New(init_err)
+			}
 		case "ping":
 			if v, ok := value.(bool); ok {
 				rad.task.Option.Ping = v
@@ -125,7 +130,7 @@ func (rad *Radar) TaskHandle(ctx *fasthttp.RequestCtx) error {
 
 func (rad *Radar) StatusHandle(ctx *fasthttp.RequestCtx) error {
 	info := rad.Info()
-	fmt.Println(string(info))
+	// fmt.Println(string(info))
 	ctx.Response.Header.SetContentType("application/json")
 	ctx.Response.SetBody(info)
 	return nil
