@@ -4,7 +4,7 @@ import "github.com/vela-ssoc/vela-kit/lua"
 
 func (t *Task) runL(L *lua.LState) int {
 	go t.GenRun()
-	go t.executionTimeMonitor()
+	go t.executionMonitor()
 	return 0
 }
 

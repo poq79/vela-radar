@@ -59,6 +59,8 @@ func (rad *Radar) Info() []byte {
 	} else {
 		enc.KV("task_all_num", rad.task.Count_all)
 		enc.KV("task_success_num", rad.task.Count_success)
+		// enc.KV("fingerPrint_task_success_num", rad.task.FingerPrint_count_all)
+		// enc.KV("fingerPrint_task_success_num", rad.task.FingerPrint_count_success)
 		enc.KV("task_process", fmt.Sprintf("%0.2f", float64(rad.task.Count_success)/float64(rad.task.Count_all)*100))
 		enc.KV("pause_signal", rad.task.Pause_signal)
 		enc.Raw("task", rad.task.info())
@@ -160,7 +162,10 @@ func (rad *Radar) handle(s *Service) {
 
 func (rad *Radar) End() {
 	atomic.StoreUint32(&rad.Status, Idle)
-	close(rad.task.executionTimeMonitorStopChan)
+	_, ok := <-rad.task.executionTimeMonitorStopChan
+	if ok {
+		close(rad.task.executionTimeMonitorStopChan)
+	}
 	if rad.task.Option.Screenshot {
 		rad.screen.Close()
 	}

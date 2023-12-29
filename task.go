@@ -41,8 +41,12 @@ type WaitGroup struct {
 
 func (wg *WaitGroup) Wait() {
 	wg.Ping.Wait()
+	// fmt.Printf("  wg.Ping.Wait() end")
 	wg.Scan.Wait()
+	// fmt.Printf("  wg.Scan.Wait() end")
 	wg.FingerPrint.Wait()
+	// fmt.Printf("  wg.FingerPrint.Wait() end")
+
 }
 
 type Pool struct {
@@ -59,11 +63,13 @@ type Scanner interface {
 }
 
 type Task struct {
-	Name                         string
-	Id                           string
-	co                           *lua.LState
-	Count_all                    uint64
-	Count_success                uint64
+	Name          string
+	Id            string
+	co            *lua.LState
+	Count_all     uint64
+	Count_success uint64
+	// FingerPrint_count_all        uint64 only for FingerPrint WaitGroup debug use
+	// FingerPrint_count_success    uint64
 	Pause_signal                 int //暂停信号 1是机器自动暂停 2是用户人工手动暂停 0是正常运行
 	executionTimeMonitorStopChan chan struct{}
 	rad                          *Radar
@@ -102,7 +108,8 @@ func (t *Task) info() []byte {
 	return enc.Bytes()
 }
 
-func (t *Task) executionTimeMonitor() {
+func (t *Task) executionMonitor() {
+	// 可做全局监视器debug用
 	t.executionTimeMonitorStopChan = make(chan struct{})
 	if t.Option.ExcludeTimeRange.Daily == "" {
 		// fmt.Println("没有设置排除时间，直接执行")
@@ -171,9 +178,10 @@ func (t *Task) GenRun() {
 	// todo Support the input of multiple IP ranges
 	t.Count_all = it.TotalNum() * uint64(len(ports))
 	fingerPool, _ := thread.NewPoolWithFunc(t.Option.Pool.Finger, func(v interface{}) {
+		defer wg.FingerPrint.Done()
 		entry := v.(port.OpenIpPort)
 		t.Dispatch.Callback(&Tx{Entry: entry, Param: t.Option})
-		wg.FingerPrint.Done()
+		// atomic.AddUint64(&t.FingerPrint_count_success, 1)
 	})
 	defer fingerPool.Release()
 
@@ -182,6 +190,7 @@ func (t *Task) GenRun() {
 		if v.Ip == nil {
 			return
 		}
+		// atomic.AddUint64(&t.FingerPrint_count_all, 1)
 		wg.FingerPrint.Add(1)
 		fingerPool.Invoke(v)
 	}
@@ -203,6 +212,7 @@ func (t *Task) GenRun() {
 	scanner := func(ip net.IP) {
 		n := len(ports)
 		if n == 1 {
+			ss.WaitLimiter() // limit rate
 			ss.Scan(ip, ports[0])
 			return
 		}
@@ -272,8 +282,11 @@ func (t *Task) GenRun() {
 
 done:
 	wg.Wait()
+	// fmt.Printf("wg.Wait end")
 	ss.Wait()
+	// fmt.Printf("ss.Wait end")
 	ss.Close()
+	close(t.executionTimeMonitorStopChan)
 	timeuse := time.Since(t.Option.Ctime)
 	hours := int(timeuse.Hours())
 	minutes := int(timeuse.Minutes()) % 60
