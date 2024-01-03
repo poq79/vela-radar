@@ -69,6 +69,8 @@ Active scanning of network assets
 `pool_ping`  ping探测协程数      
 `pool_scan`  scan协程数  
 `pool_finger` 指纹识别协程数   
+`excludeTimeRange`  扫描排除时间段 示例"daily,9:00,17:00"  
+
 
 **例子**:  
 ```json

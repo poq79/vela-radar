@@ -3,6 +3,7 @@ package radar
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"github.com/valyala/fasthttp"
 )
@@ -120,6 +121,18 @@ func (rad *Radar) TaskHandle(ctx *fasthttp.RequestCtx) error {
 			} else {
 				// return errors.New(init_err)
 			}
+		case "excludeTimeRange":
+			if v, ok := value.(string); ok {
+				elements := strings.Split(v, ",")
+				if len(elements) == 3 {
+					rad.task.Option.ExcludeTimeRange.Daily = elements[0]
+					rad.task.Option.ExcludeTimeRange.Begin = elements[1]
+					rad.task.Option.ExcludeTimeRange.End = elements[2]
+				}
+			} else {
+				// return errors.New(init_err)
+			}
+
 		}
 	}
 	go rad.task.GenRun()
