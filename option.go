@@ -25,8 +25,8 @@ type Option struct {
 }
 
 func (o *Option) set_rate(n int) {
-	if n > 1000 {
-		o.Rate = 1000
+	if n > 2000 {
+		o.Rate = 2000
 	} else {
 		o.Rate = n
 	}
@@ -36,23 +36,23 @@ func (o *Option) set_pool_ping(n int) {
 	if n > 1000 {
 		o.Pool.Ping = 1000
 	} else {
-		o.Rate = n
+		o.Pool.Ping = n
 	}
 }
 
 func (o *Option) set_pool_scan(n int) {
-	if n > 1000 {
-		o.Pool.Scan = 1000
+	if n > 500 {
+		o.Pool.Scan = 500
 	} else {
-		o.Rate = n
+		o.Pool.Scan = n
 	}
 }
 
 func (o *Option) set_pool_finger(n int) {
-	if n > 1000 {
-		o.Pool.Scan = 1000
+	if n > 500 {
+		o.Pool.Finger = 500
 	} else {
-		o.Rate = n
+		o.Pool.Finger = n
 	}
 }
 
