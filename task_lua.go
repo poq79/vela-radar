@@ -83,9 +83,24 @@ func (t *Task) excludeTimeRangeL(L *lua.LState) int {
 	Daily := L.CheckString(1)
 	Begin := L.CheckString(2)
 	End := L.CheckString(3)
-	t.Option.ExcludeTimeRange.Daily = Daily
-	t.Option.ExcludeTimeRange.Begin = Begin
-	t.Option.ExcludeTimeRange.End = End
+	// t.Option.ExcludeTimeRange.Daily = Daily
+	// t.Option.ExcludeTimeRange.Begin = Begin
+	// t.Option.ExcludeTimeRange.End = End
+	err := t.Option.set_ExcludeTimeRange_Daily(Daily)
+	if err != nil {
+		xEnv.Errorf("set_ExcludeTimeRange_Daily fail %v", err)
+		return 0
+	}
+	err = t.Option.set_ExcludeTimeRange_Begin(Begin)
+	if err != nil {
+		xEnv.Errorf("set_ExcludeTimeRange_Begin fail %v", err)
+		return 0
+	}
+	err = t.Option.set_ExcludeTimeRange_End(End)
+	if err != nil {
+		xEnv.Errorf("set_ExcludeTimeRange_End fail %v", err)
+		return 0
+	}
 	L.Push(t)
 	return 1
 }

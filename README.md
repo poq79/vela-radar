@@ -15,7 +15,12 @@ Active scanning of network assets
 2023-12-25 &emsp; v0.4.0 &emsp; 支持设置扫描时间段(定时暂停与开始, beta)  
 2023-12-25 &emsp; v0.4.1 &emsp; 优化任务计数逻辑, 提升扫描进度百分比的精确度  
 2023-12-25 &emsp; v0.4.2 &emsp; 修复扫描只一个大段网段的某一个端口时, 导致的任务异常退出问题  
-2023-12-25 &emsp; v0.4.3 &emsp; 修复FingerPrint子任务调度相关问题
+2023-12-25 &emsp; v0.4.3 &emsp; 修复FingerPrint子任务调度相关问题  
+2024-01-02 &emsp; v0.4.4 &emsp; 内部HTTP API支持扫描排除时间段设置  
+2024-01-03 &emsp; v0.4.5 &emsp; 修复扫描速率参数设置问题  
+2024-01-03 &emsp; v0.4.5 &emsp; 优化扫描参数传入    
+
+
 
 
 ## 功能
@@ -60,9 +65,9 @@ Active scanning of network assets
 `name`  *  任务名称  
 `mode`  模式 "tcp"(默认)/"syn"  
 `port`  端口  默认top1000  
-`rate`  基础发包速率   
+`rate`  传输层协议基础发包速率   
 `timeout`  超时时间(ms)  
-`httpx`  是否http指纹探测  
+`httpx`  是否开启http指纹探测  
 `fingerDB`  指定web指纹库三方依赖(不指定则使用内置默认指纹库)   
 `screenshot`  是否开启站点截图功能  
 `ping`  是否开启ping存活探测  

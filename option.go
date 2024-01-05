@@ -1,6 +1,7 @@
 package radar
 
 import (
+	"errors"
 	"time"
 
 	"github.com/vela-ssoc/vela-radar/util"
@@ -64,4 +65,36 @@ func (o *Option) set_timeout(n int) {
 	} else {
 		o.Timeout = n
 	}
+}
+
+func (o *Option) set_ExcludeTimeRange_Daily(s string) error {
+	switch s {
+	case "daily":
+		o.ExcludeTimeRange.Daily = s
+	case "everyWorKDay":
+		o.ExcludeTimeRange.Daily = s
+	// case "everyWeekend":
+	// 	o.ExcludeTimeRange.Daily = s
+	default:
+		return errors.New("invalid time range")
+	}
+	return nil
+}
+
+func (o *Option) set_ExcludeTimeRange_Begin(s string) error {
+	_, err := time.Parse("15:04", s)
+	if err != nil {
+		return errors.New("invalid time range")
+	}
+	o.ExcludeTimeRange.Begin = s
+	return nil
+}
+
+func (o *Option) set_ExcludeTimeRange_End(s string) error {
+	_, err := time.Parse("15:04", s)
+	if err != nil {
+		return errors.New("invalid time range")
+	}
+	o.ExcludeTimeRange.End = s
+	return nil
 }
