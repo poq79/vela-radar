@@ -73,8 +73,8 @@ func (o *Option) set_ExcludeTimeRange_Daily(s string) error {
 		o.ExcludeTimeRange.Daily = s
 	case "everyWorKDay":
 		o.ExcludeTimeRange.Daily = s
-	// case "everyWeekend":
-	// 	o.ExcludeTimeRange.Daily = s
+	case "OpeningtimeBroad":
+		o.ExcludeTimeRange.Daily = s
 	default:
 		return errors.New("invalid time range")
 	}

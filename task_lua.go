@@ -68,6 +68,13 @@ func (t *Task) fingerDBL(L *lua.LState) int {
 	return 1
 }
 
+func (t *Task) timeoutL(L *lua.LState) int {
+	timeout := L.CheckInt(1)
+	t.Option.set_timeout(timeout)
+	L.Push(t)
+	return 1
+}
+
 func (t *Task) poolL(L *lua.LState) int {
 	scan := L.IsInt(1)
 	finger := L.IsInt(2)
@@ -88,17 +95,17 @@ func (t *Task) excludeTimeRangeL(L *lua.LState) int {
 	// t.Option.ExcludeTimeRange.End = End
 	err := t.Option.set_ExcludeTimeRange_Daily(Daily)
 	if err != nil {
-		xEnv.Errorf("set_ExcludeTimeRange_Daily fail %v", err)
+		L.RaiseError("set_ExcludeTimeRange_Daily fail %v", err)
 		return 0
 	}
 	err = t.Option.set_ExcludeTimeRange_Begin(Begin)
 	if err != nil {
-		xEnv.Errorf("set_ExcludeTimeRange_Begin fail %v", err)
+		L.RaiseError("set_ExcludeTimeRange_Begin fail %v", err)
 		return 0
 	}
 	err = t.Option.set_ExcludeTimeRange_End(End)
 	if err != nil {
-		xEnv.Errorf("set_ExcludeTimeRange_End fail %v", err)
+		L.RaiseError("set_ExcludeTimeRange_End fail %v", err)
 		return 0
 	}
 	L.Push(t)
@@ -115,6 +122,8 @@ func (t *Task) Index(L *lua.LState, key string) lua.LValue {
 		return lua.NewFunction(t.locationL)
 	case "rate":
 		return lua.NewFunction(t.rateL)
+	case "timeout":
+		return lua.NewFunction(t.timeoutL)
 	case "port":
 		return lua.NewFunction(t.portL)
 	case "httpx":

@@ -18,7 +18,10 @@ Active scanning of network assets
 2023-12-25 &emsp; v0.4.3 &emsp; 修复FingerPrint子任务调度相关问题  
 2024-01-02 &emsp; v0.4.4 &emsp; 内部HTTP API支持扫描排除时间段设置  
 2024-01-03 &emsp; v0.4.5 &emsp; 修复扫描速率参数设置问题  
-2024-01-03 &emsp; v0.4.5 &emsp; 优化扫描参数传入    
+2024-01-05 &emsp; v0.4.5 &emsp; 优化扫描参数传入    
+2024-01-06 &emsp; v0.4.6 &emsp; 优化扫描排除时间功能,现支持更加智能地排除开盘时间       
+2024-01-06 &emsp; v0.4.6 &emsp; 整理完善文档       
+
 
 
 
@@ -76,7 +79,6 @@ Active scanning of network assets
 `pool_finger` 指纹识别协程数   
 `excludeTimeRange`  扫描排除时间段 示例"daily,9:00,17:00"  
 
-
 **例子**:  
 ```json
 {
@@ -113,6 +115,7 @@ rr.define()
 
 -- 开启扫描任务
 rr.task("192.168.1.1/24").port("top1000").httpx(true).exclude("192.168.1.100,192.168.1.10-20").run()
+-- 关闭主机ping存活探测 .ping(false)
 -- web快照截图 .screenshot(true)
 -- 指定指纹库  .fingerDB("radar-http-finger.json")
 -- 指定扫描时间段  .excludeTimeRange("daily","15:00","15:02")
