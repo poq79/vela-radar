@@ -174,7 +174,7 @@ func ShuffleParseAndMergeTopPorts(portStr string) (ports []uint16, err error) {
 	for _, portRange := range portRanges {
 		var ok bool
 		for _port := portRange[0]; _port <= portRange[1]; _port++ {
-			if _port == 0 {
+			if _port == 0 || _port == 9100 {
 				continue
 			}
 			if _, ok = selectTopPort[_port]; ok {
