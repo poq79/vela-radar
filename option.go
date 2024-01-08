@@ -26,8 +26,8 @@ type Option struct {
 }
 
 func (o *Option) set_rate(n int) {
-	if n > 2000 {
-		o.Rate = 2000
+	if n > 20000 {
+		o.Rate = 20000
 	} else {
 		o.Rate = n
 	}
