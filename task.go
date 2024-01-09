@@ -172,6 +172,7 @@ func (t *Task) GenRun() {
 	if err != nil {
 		xEnv.Errorf("task ip range parse fail %v", err)
 		audit.NewEvent("PortScanTask.error").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("task ip range parse fail %v", err)).Log().Put()
+		close(t.executionTimeMonitorStopChan)
 		t.Dispatch.End()
 		return
 	}
@@ -183,6 +184,7 @@ func (t *Task) GenRun() {
 	if err != nil {
 		xEnv.Errorf("task port range parse fail %v", err)
 		audit.NewEvent("PortScanTask.error").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("task port range parse fail %v", err)).Log().Put()
+		close(t.executionTimeMonitorStopChan)
 		t.Dispatch.End()
 		return
 	}
