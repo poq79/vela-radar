@@ -39,13 +39,19 @@ type WaitGroup struct {
 	FingerPrint sync.WaitGroup
 }
 
-func (wg *WaitGroup) Wait() {
+func (wg *WaitGroup) Wait(debug bool) {
 	wg.Ping.Wait()
-	// fmt.Printf("  wg.Ping.Wait() end")
+	if debug {
+		xEnv.Infof("  wg.Ping.Wait() end")
+	}
 	wg.Scan.Wait()
-	// fmt.Printf("  wg.Scan.Wait() end")
+	if debug {
+		xEnv.Infof("  wg.Scan.Wait() end")
+	}
 	wg.FingerPrint.Wait()
-	// fmt.Printf("  wg.FingerPrint.Wait() end")
+	if debug {
+		xEnv.Infof("  wg.FingerPrint.Wait() end")
+	}
 
 }
 
@@ -65,6 +71,7 @@ type Scanner interface {
 type Task struct {
 	Name          string
 	Id            string
+	Debug         bool
 	co            *lua.LState
 	Count_all     uint64
 	Count_success uint64
@@ -112,13 +119,17 @@ func (t *Task) executionMonitor() {
 	// 可做全局监视器debug用
 	t.executionTimeMonitorStopChan = make(chan struct{})
 	if t.Option.ExcludeTimeRange.Daily == "" {
-		// fmt.Println("没有设置排除时间，直接执行")
+		if t.rad.cfg.Debug || t.Debug {
+			xEnv.Infof("没有设置排除时间，直接执行")
+		}
 		return
 	}
 	for {
 		select {
 		case <-t.executionTimeMonitorStopChan:
-			// fmt.Println("扫描任务结束, 接收到终止信, 退出执行时间监控器协程")
+			if t.rad.cfg.Debug || t.Debug {
+				xEnv.Infof("扫描任务结束, 接收到终止信号, 退出执行时间监控器协程")
+			}
 			return
 		default:
 			isInTimeRange, err := util.IsWithinRange(t.Option.ExcludeTimeRange)
@@ -281,12 +292,25 @@ func (t *Task) GenRun() {
 	}
 
 done:
-	wg.Wait()
-	// fmt.Printf("wg.Wait end")
+	wg.Wait(t.rad.cfg.Debug || t.Debug)
+	if t.rad.cfg.Debug || t.Debug {
+		xEnv.Infof("wg.Wait end")
+		// fmt.Printf("task end\n")
+	}
 	ss.Wait()
-	// fmt.Printf("ss.Wait end")
+	if t.rad.cfg.Debug || t.Debug {
+		xEnv.Infof("ss.Wait end")
+		// fmt.Printf("ss.Wait end\n")
+	}
 	ss.Close()
+	if t.rad.cfg.Debug || t.Debug {
+		xEnv.Infof("[%s]scanner closed", t.Option.Mode)
+		// fmt.Printf("[%s]scanner closed\n")
+	}
 	close(t.executionTimeMonitorStopChan)
+	if t.rad.cfg.Debug || t.Debug {
+		xEnv.Infof("executionTimeMonitorStopChan closed")
+	}
 	timeuse := time.Since(t.Option.Ctime)
 	hours := int(timeuse.Hours())
 	minutes := int(timeuse.Minutes()) % 60
@@ -294,5 +318,8 @@ done:
 	timeuseMsg := fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
 	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Id, timeuseMsg)).Log().Put()
 	t.Dispatch.End()
+	if t.rad.cfg.Debug || t.Debug {
+		xEnv.Infof("task end")
+	}
 	// audit.Debug("task end").From(t.co.CodeVM()).Put()
 }

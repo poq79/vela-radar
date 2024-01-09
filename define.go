@@ -121,6 +121,12 @@ func (rad *Radar) TaskHandle(ctx *fasthttp.RequestCtx) error {
 			} else {
 				// return errors.New(init_err)
 			}
+		case "debug":
+			if v, ok := value.(bool); ok {
+				rad.task.Debug = v
+			} else {
+				// return errors.New(init_err)
+			}
 		case "excludeTimeRange":
 			if v, ok := value.(string); ok {
 				elements := strings.Split(v, ",")

@@ -18,6 +18,7 @@ type Config struct {
 	MinioCfg   *util.MinioCfg
 	ReportDoer string
 	ReportUri  string
+	Debug      bool
 	Chains     *pipe.Chains
 }
 
@@ -121,6 +122,8 @@ func (cfg *Config) NewIndex(L *lua.LState, key string, val lua.LValue) {
 		cfg.ReportDoer = val.String()
 	case "reportUri":
 		cfg.ReportUri = val.String()
+	case "debug":
+		cfg.Debug = lua.CheckBool(L, val)
 	//todo
 	default:
 		return

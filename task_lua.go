@@ -112,6 +112,12 @@ func (t *Task) excludeTimeRangeL(L *lua.LState) int {
 	return 1
 }
 
+func (t *Task) debugL(L *lua.LState) int {
+	t.Debug = L.IsTrue(1)
+	L.Push(t)
+	return 1
+}
+
 func (t *Task) Index(L *lua.LState, key string) lua.LValue {
 	switch key {
 	case "exclude":
@@ -132,6 +138,8 @@ func (t *Task) Index(L *lua.LState, key string) lua.LValue {
 		return lua.NewFunction(t.poolL)
 	case "ping":
 		return lua.NewFunction(t.pingL)
+	case "debug":
+		return lua.NewFunction(t.debugL)
 	case "screenshot":
 		return lua.NewFunction(t.screenshotL)
 	case "fingerDB":
