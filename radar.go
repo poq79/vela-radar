@@ -162,10 +162,7 @@ func (rad *Radar) handle(s *Service) {
 
 func (rad *Radar) End() {
 	atomic.StoreUint32(&rad.Status, Idle)
-	_, ok := <-rad.task.executionTimeMonitorStopChan
-	if ok {
-		close(rad.task.executionTimeMonitorStopChan)
-	}
+	close(rad.task.executionTimeMonitorStopChan)
 	if rad.task.Option.Screenshot {
 		rad.screen.Close()
 	}
