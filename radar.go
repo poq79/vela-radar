@@ -97,6 +97,10 @@ func (rad *Radar) Screen(tx *Tx, s *Service) {
 		return
 	}
 
+	if !rad.screen.Avaliable {
+		return
+	}
+
 	if s.HTTPInfo == nil {
 		return
 	}
@@ -115,7 +119,6 @@ func (rad *Radar) Screen(tx *Tx, s *Service) {
 		TimeoutCancel: func() {},
 	}
 	defer target.TimeoutCancel()
-
 	rad.screen.Push(target)
 
 	select {

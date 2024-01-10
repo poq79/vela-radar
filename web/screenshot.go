@@ -59,24 +59,26 @@ type ScreenshotTask struct {
 }
 
 type ScreenshotServer struct {
-	Cfg    *ScreenshotCfg
-	ctx    context.Context
-	state  uint32
-	chrome []chromedp.ExecAllocatorOption
-	queue  chan *ScreenshotTask
-	Logger vela.Log
+	Cfg       *ScreenshotCfg
+	ctx       context.Context
+	state     uint32
+	Avaliable bool
+	chrome    []chromedp.ExecAllocatorOption
+	queue     chan *ScreenshotTask
+	Logger    vela.Log
 }
 
 var (
-	execPathNotFound        = "[-] Chrome executable file not found, please install Chrome or specify the chrome.exe path with --path"
+	execPathNotFound        = "[-] Chrome executable file not found, please install Chrome or specify the chrome.exe"
 	createResultFolderError = "[-] failed to create result folder:%v"
 )
 
 func NewScreenServer(ctx context.Context, cfg *ScreenshotCfg, log vela.Log) (*ScreenshotServer, error) {
 	screen := &ScreenshotServer{
-		ctx:    ctx,
-		Cfg:    cfg,
-		Logger: log,
+		ctx:       ctx,
+		Cfg:       cfg,
+		Logger:    log,
+		Avaliable: true,
 	}
 
 	if e := fileutil.CreateIfNotExists(cfg.ResultDir, true); e != nil {
@@ -123,6 +125,7 @@ func (st *ScreenshotServer) navigate(workerNum int, option []chromedp.ExecAlloca
 
 	// Check & Make Browser not close
 	if e := chromedp.Run(ctx, chromedp.Navigate("about:blank")); e != nil {
+		st.Avaliable = false
 		if strings.Contains(e.Error(), "executable file not found") {
 			st.Logger.Error(execPathNotFound)
 			return
@@ -176,7 +179,9 @@ func (st *ScreenshotServer) navigate(workerNum int, option []chromedp.ExecAlloca
 }
 
 func (st *ScreenshotServer) Push(target *ScreenshotTask) {
-	st.queue <- target
+	if st.Avaliable {
+		st.queue <- target
+	}
 }
 
 func (st *ScreenshotServer) Close() {

@@ -66,9 +66,9 @@ func (rad *Radar) chromeL(L *lua.LState) int {
 		Chrome:    false,
 		Thread:    5,
 		Timeout:   10,
-		ResultDir: "res",
-		Save:      true,
-		Debug:     true,
+		ResultDir: "screenshoot_result",
+		Save:      false,
+		Debug:     false,
 		Miniocfg:  rad.cfg.MinioCfg,
 	}
 	v := L.Get(1)
