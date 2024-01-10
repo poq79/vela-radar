@@ -40,6 +40,7 @@ func (s *Service) Bytes() []byte {
 	enc.KV("port", s.Port)
 	enc.KV("tls", s.TLS)
 	enc.KV("host", s.Host)
+	enc.KV("location", s.Location)
 	enc.KV("protocol", s.Protocol)
 	enc.KV("transport", s.Transport)
 	enc.KV("version", s.Version)

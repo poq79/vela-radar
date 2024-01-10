@@ -14,6 +14,21 @@ Active scanning of network assets
 2023-12-20 &emsp; v0.3.2 &emsp; web指纹加载逻辑升级, 支持自定义三方指纹库动态加载和更新  
 2023-12-25 &emsp; v0.4.0 &emsp; 支持设置扫描时间段(定时暂停与开始, beta)  
 2023-12-25 &emsp; v0.4.1 &emsp; 优化任务计数逻辑, 提升扫描进度百分比的精确度  
+2023-12-25 &emsp; v0.4.2 &emsp; 修复扫描只一个大段网段的某一个端口时, 导致的任务异常退出问题  
+2023-12-25 &emsp; v0.4.3 &emsp; 修复FingerPrint子任务调度相关问题  
+2024-01-02 &emsp; v0.4.4 &emsp; 内部HTTP API支持扫描排除时间段设置  
+2024-01-03 &emsp; v0.4.5 &emsp; 修复扫描速率参数设置问题  
+2024-01-05 &emsp; v0.4.5 &emsp; 优化扫描参数传入    
+2024-01-06 &emsp; v0.4.6 &emsp; 优化扫描排除时间功能,现支持更加智能地排除开盘时间       
+2024-01-06 &emsp; v0.4.6 &emsp; 整理完善文档       
+2024-01-08 &emsp; v0.4.7 &emsp; 放宽传输层最大发包速率上限  
+2024-01-08 &emsp; v0.4.7 &emsp; 修复内置TOP5000端口号部分错误   
+
+
+
+
+
+
 
 
 ## 功能
@@ -42,7 +57,9 @@ Active scanning of network assets
 9.  优化扫描结果的数据结构
 10. 分布式集群扫描,智能分配扫描任务
 11. 处理模块实时返回数据的问题  
-12. ……  
+12. 支持端口排除项(端口,端口范围以及用","分割组合输入)
+13. 尝试处理 lua脚本更新 旧的扫描任务没有强制停止问题  
+14. ……  
 
 ## Lua API
   直接查看示例  
@@ -58,15 +75,16 @@ Active scanning of network assets
 `name`  *  任务名称  
 `mode`  模式 "tcp"(默认)/"syn"  
 `port`  端口  默认top1000  
-`rate`  基础发包速率   
+`rate`  传输层协议基础发包速率   
 `timeout`  超时时间(ms)  
-`httpx`  是否http指纹探测  
+`httpx`  是否开启http指纹探测  
 `fingerDB`  指定web指纹库三方依赖(不指定则使用内置默认指纹库)   
 `screenshot`  是否开启站点截图功能  
 `ping`  是否开启ping存活探测  
 `pool_ping`  ping探测协程数      
 `pool_scan`  scan协程数  
 `pool_finger` 指纹识别协程数   
+`excludeTimeRange`  扫描排除时间段 示例"daily,9:00,17:00"  
 
 **例子**:  
 ```json
@@ -104,6 +122,7 @@ rr.define()
 
 -- 开启扫描任务
 rr.task("192.168.1.1/24").port("top1000").httpx(true).exclude("192.168.1.100,192.168.1.10-20").run()
+-- 关闭主机ping存活探测 .ping(false)
 -- web快照截图 .screenshot(true)
 -- 指定指纹库  .fingerDB("radar-http-finger.json")
 -- 指定扫描时间段  .excludeTimeRange("daily","15:00","15:02")

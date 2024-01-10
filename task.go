@@ -39,10 +39,20 @@ type WaitGroup struct {
 	FingerPrint sync.WaitGroup
 }
 
-func (wg *WaitGroup) Wait() {
+func (wg *WaitGroup) Wait(debug bool) {
 	wg.Ping.Wait()
+	if debug {
+		xEnv.Infof("  wg.Ping.Wait() end")
+	}
 	wg.Scan.Wait()
+	if debug {
+		xEnv.Infof("  wg.Scan.Wait() end")
+	}
 	wg.FingerPrint.Wait()
+	if debug {
+		xEnv.Infof("  wg.FingerPrint.Wait() end")
+	}
+
 }
 
 type Pool struct {
@@ -59,11 +69,14 @@ type Scanner interface {
 }
 
 type Task struct {
-	Name                         string
-	Id                           string
-	co                           *lua.LState
-	Count_all                    uint64
-	Count_success                uint64
+	Name          string
+	Id            string
+	Debug         bool
+	co            *lua.LState
+	Count_all     uint64
+	Count_success uint64
+	// FingerPrint_count_all        uint64 only for FingerPrint WaitGroup debug use
+	// FingerPrint_count_success    uint64
 	Pause_signal                 int //暂停信号 1是机器自动暂停 2是用户人工手动暂停 0是正常运行
 	executionTimeMonitorStopChan chan struct{}
 	rad                          *Radar
@@ -102,16 +115,21 @@ func (t *Task) info() []byte {
 	return enc.Bytes()
 }
 
-func (t *Task) executionTimeMonitor() {
+func (t *Task) executionMonitor() {
+	// 可做全局监视器debug用
 	t.executionTimeMonitorStopChan = make(chan struct{})
 	if t.Option.ExcludeTimeRange.Daily == "" {
-		// fmt.Println("没有设置排除时间，直接执行")
+		if t.rad.cfg.Debug || t.Debug {
+			xEnv.Infof("没有设置排除时间，直接执行")
+		}
 		return
 	}
 	for {
 		select {
 		case <-t.executionTimeMonitorStopChan:
-			// fmt.Println("扫描任务结束, 接收到终止信, 退出执行时间监控器协程")
+			if t.rad.cfg.Debug || t.Debug {
+				xEnv.Infof("扫描任务结束, 接收到终止信号, 退出执行时间监控器协程")
+			}
 			return
 		default:
 			isInTimeRange, err := util.IsWithinRange(t.Option.ExcludeTimeRange)
@@ -154,6 +172,7 @@ func (t *Task) GenRun() {
 	if err != nil {
 		xEnv.Errorf("task ip range parse fail %v", err)
 		audit.NewEvent("PortScanTask.error").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("task ip range parse fail %v", err)).Log().Put()
+		close(t.executionTimeMonitorStopChan)
 		t.Dispatch.End()
 		return
 	}
@@ -165,15 +184,17 @@ func (t *Task) GenRun() {
 	if err != nil {
 		xEnv.Errorf("task port range parse fail %v", err)
 		audit.NewEvent("PortScanTask.error").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("task port range parse fail %v", err)).Log().Put()
+		close(t.executionTimeMonitorStopChan)
 		t.Dispatch.End()
 		return
 	}
 	// todo Support the input of multiple IP ranges
 	t.Count_all = it.TotalNum() * uint64(len(ports))
 	fingerPool, _ := thread.NewPoolWithFunc(t.Option.Pool.Finger, func(v interface{}) {
+		defer wg.FingerPrint.Done()
 		entry := v.(port.OpenIpPort)
 		t.Dispatch.Callback(&Tx{Entry: entry, Param: t.Option})
-		wg.FingerPrint.Done()
+		// atomic.AddUint64(&t.FingerPrint_count_success, 1)
 	})
 	defer fingerPool.Release()
 
@@ -182,6 +203,7 @@ func (t *Task) GenRun() {
 		if v.Ip == nil {
 			return
 		}
+		// atomic.AddUint64(&t.FingerPrint_count_all, 1)
 		wg.FingerPrint.Add(1)
 		fingerPool.Invoke(v)
 	}
@@ -203,6 +225,7 @@ func (t *Task) GenRun() {
 	scanner := func(ip net.IP) {
 		n := len(ports)
 		if n == 1 {
+			ss.WaitLimiter() // limit rate
 			ss.Scan(ip, ports[0])
 			return
 		}
@@ -271,9 +294,25 @@ func (t *Task) GenRun() {
 	}
 
 done:
-	wg.Wait()
+	wg.Wait(t.rad.cfg.Debug || t.Debug)
+	if t.rad.cfg.Debug || t.Debug {
+		xEnv.Infof("wg.Wait end")
+		// fmt.Printf("task end\n")
+	}
 	ss.Wait()
+	if t.rad.cfg.Debug || t.Debug {
+		xEnv.Infof("ss.Wait end")
+		// fmt.Printf("ss.Wait end\n")
+	}
 	ss.Close()
+	if t.rad.cfg.Debug || t.Debug {
+		xEnv.Infof("[%s]scanner closed", t.Option.Mode)
+		// fmt.Printf("[%s]scanner closed\n")
+	}
+	close(t.executionTimeMonitorStopChan)
+	if t.rad.cfg.Debug || t.Debug {
+		xEnv.Infof("executionTimeMonitorStopChan closed")
+	}
 	timeuse := time.Since(t.Option.Ctime)
 	hours := int(timeuse.Hours())
 	minutes := int(timeuse.Minutes()) % 60
@@ -281,5 +320,8 @@ done:
 	timeuseMsg := fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
 	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Id, timeuseMsg)).Log().Put()
 	t.Dispatch.End()
+	if t.rad.cfg.Debug || t.Debug {
+		xEnv.Infof("task end")
+	}
 	// audit.Debug("task end").From(t.co.CodeVM()).Put()
 }
