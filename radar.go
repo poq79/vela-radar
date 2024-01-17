@@ -198,6 +198,7 @@ func (rad *Radar) Callback(tx *Tx) {
 		Transport: srv.Transport,
 		Version:   srv.Version,
 		Banner:    srv.Raw,
+		TaskId:    rad.task.Id,
 	}
 
 	if tx.Param.Httpx && s.Protocol == "http" {
