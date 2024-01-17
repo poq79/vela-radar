@@ -132,18 +132,14 @@ func (t *Task) close() error {
 func (t *Task) info() []byte {
 	enc := kind.NewJsonEncoder()
 	timeuse_second, timeuse_msg := t.get_timeuse_second()
-	endTimeString := t.End_time.Format("2006-01-02 15:04:05")
-	if endTimeString == "0001-01-01 00:00:00" {
-		endTimeString = ""
-	}
 	enc.Tab("")
 	enc.KV("name", t.Name)
 	enc.KV("id", t.Id)
 	enc.KV("debug", t.Debug)
 	enc.KV("status", t.Status)
 	enc.KV("msg", t.Msg)
-	enc.KV("start_time", t.Start_time.Format("2006-01-02 15:04:05"))
-	enc.KV("end_time", endTimeString)
+	enc.KV("start_time", t.Start_time)
+	enc.KV("end_time", t.End_time)
 	enc.KV("timeuse_second", timeuse_second)
 	enc.KV("timeuse_msg", timeuse_msg)
 	enc.KV("task_all_num", t.Count_all)
