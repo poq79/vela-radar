@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
 )
 
@@ -59,73 +61,73 @@ func (rad *Radar) TaskHandle(ctx *fasthttp.RequestCtx) error {
 			if v, ok := value.(string); ok {
 				rad.task.Option.Mode = v
 			} else {
-				// return errors.New(init_err)
+				// return errors.New(taskParameterInitErr)
 			}
 		case "port":
 			if v, ok := value.(string); ok {
 				rad.task.Option.Port = v
 			} else {
-				// return errors.New(init_err)
+				// return errors.New(taskParameterInitErr)
 			}
 		case "rate":
-			if v, ok := value.(int); ok {
-				rad.task.Option.set_rate(v)
+			if v, ok := value.(float64); ok {
+				rad.task.Option.set_rate(int(v))
 			} else {
-				// return errors.New(init_err)
+				// return errors.New(taskParameterInitErr)
 			}
 		case "timeout":
-			if v, ok := value.(int); ok {
-				rad.task.Option.set_timeout(v)
+			if v, ok := value.(float64); ok {
+				rad.task.Option.set_timeout(int(v))
 			} else {
-				// return errors.New(init_err)
+				// return errors.New(taskParameterInitErr)
 			}
 		case "httpx":
 			if v, ok := value.(bool); ok {
 				rad.task.Option.Httpx = v
 			} else {
-				// return errors.New(init_err)
+				// return errors.New(taskParameterInitErr)
 			}
 		case "fingerDB":
 			if v, ok := value.(string); ok {
 				rad.task.Option.FingerDB = v
 			} else {
-				// return errors.New(init_err)
+				// return errors.New(taskParameterInitErr)
 			}
 		case "ping":
 			if v, ok := value.(bool); ok {
 				rad.task.Option.Ping = v
 			} else {
-				// return errors.New(init_err)
+				// return errors.New(taskParameterInitErr)
 			}
 		case "screenshot":
 			if v, ok := value.(bool); ok {
 				rad.task.Option.Screenshot = v
 			} else {
-				// return errors.New(init_err)
+				// return errors.New(taskParameterInitErr)
 			}
 		case "pool_ping":
-			if v, ok := value.(int); ok {
-				rad.task.Option.set_pool_ping(v)
+			if v, ok := value.(float64); ok {
+				rad.task.Option.set_pool_ping(int(v))
 			} else {
-				// return errors.New(init_err)
+				// return errors.New(taskParameterInitErr)
 			}
 		case "pool_scan":
-			if v, ok := value.(int); ok {
-				rad.task.Option.set_pool_scan(v)
+			if v, ok := value.(float64); ok {
+				rad.task.Option.set_pool_scan(int(v))
 			} else {
-				// return errors.New(init_err)
+				// return errors.New(taskParameterInitErr)
 			}
 		case "pool_finger":
-			if v, ok := value.(int); ok {
-				rad.task.Option.set_pool_finger(v)
+			if v, ok := value.(float64); ok {
+				rad.task.Option.set_pool_finger(int(v))
 			} else {
-				// return errors.New(init_err)
+				// return errors.New(taskParameterInitErr)
 			}
 		case "debug":
 			if v, ok := value.(bool); ok {
 				rad.task.Debug = v
 			} else {
-				// return errors.New(init_err)
+				// return errors.New(taskParameterInitErr)
 			}
 		case "excludeTimeRange":
 			if v, ok := value.(string); ok {
@@ -147,12 +149,15 @@ func (rad *Radar) TaskHandle(ctx *fasthttp.RequestCtx) error {
 					return errors.New(taskParameterInitErr + key)
 				}
 			} else {
-				// return errors.New(init_err)
+				// return errors.New(taskParameterInitErr)
 			}
 
 		}
 	}
+	rad.task.Start_time = time.Now()
+	rad.task.Id = uuid.NewString()
 	go rad.task.GenRun()
+	go rad.task.executionMonitor()
 	ctx.Response.Header.SetContentType("application/json")
 	ctx.Response.SetBody(rad.task.info())
 	return nil

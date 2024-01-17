@@ -20,9 +20,8 @@ type Option struct {
 	FingerDB         string         `json:"fingerDB"`
 	Screenshot       bool           `json:"screenshot"`
 	Pool             Pool           `json:"pool"`
-	ExcludeTimeRange util.TimeRange `json:"excludeTimeRange"`
+	ExcludeTimeRange util.TimeRange `json:"exclude_time_range"`
 	MinioCfg         util.MinioCfg  `json:"-"`
-	Ctime            time.Time      `json:"-"`
 }
 
 func (o *Option) set_rate(n int) {

@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/vela-ssoc/vela-kit/audit"
 	"github.com/vela-ssoc/vela-kit/iputil"
 	"github.com/vela-ssoc/vela-kit/kind"
@@ -68,16 +67,43 @@ type Scanner interface {
 	Close()
 }
 
+type Task_Status int
+
+const (
+	Task_Status_Init Task_Status = iota
+	Task_Status_Running
+	Task_Status_Success
+	Task_Status_Paused_By_Program
+	Task_Status_Paused_Artificial
+	Task_Status_Error
+	Task_Status_Unknown
+)
+
+var Task_Status_Strings = [...]string{
+	"Init",
+	"Running",
+	"Success",
+	"paused_by_program",
+	"paused_artificial",
+	"Unknown",
+}
+
 type Task struct {
-	Name          string
-	Id            string
-	Debug         bool
-	co            *lua.LState
-	Count_all     uint64
-	Count_success uint64
+	Name           string
+	Id             string
+	Debug          bool
+	Status         Task_Status
+	Count_all      uint64
+	Count_success  uint64
+	Start_time     time.Time
+	End_time       time.Time
+	Timeuse_second float64
+	Timeuse_msg    string
+	Msg            string
 	// FingerPrint_count_all        uint64 only for FingerPrint WaitGroup debug use
 	// FingerPrint_count_success    uint64
-	Pause_signal                 int //暂停信号 1是机器自动暂停 2是用户人工手动暂停 0是正常运行
+	// Pause_signal                 int //暂停信号 1是机器自动暂停 2是用户人工手动暂停 0是正常运行
+	co                           *lua.LState
 	executionTimeMonitorStopChan chan struct{}
 	rad                          *Radar
 	Option                       Option
@@ -105,14 +131,63 @@ func (t *Task) close() error {
 
 func (t *Task) info() []byte {
 	enc := kind.NewJsonEncoder()
+	timeuse_second, timeuse_msg := t.get_timeuse_second()
+	endTimeString := t.End_time.Format("2006-01-02 15:04:05")
+	if endTimeString == "0001-01-01 00:00:00" {
+		endTimeString = ""
+	}
 	enc.Tab("")
 	enc.KV("name", t.Name)
 	enc.KV("id", t.Id)
-	enc.KV("status", "working")
-	enc.KV("start_time", t.Option.Ctime.Format("2006-01-02 15:04:05"))
+	enc.KV("debug", t.Debug)
+	enc.KV("status", t.Status)
+	enc.KV("msg", t.Msg)
+	enc.KV("start_time", t.Start_time.Format("2006-01-02 15:04:05"))
+	enc.KV("end_time", endTimeString)
+	enc.KV("timeuse_second", timeuse_second)
+	enc.KV("timeuse_msg", timeuse_msg)
+	enc.KV("task_all_num", t.Count_all)
+	enc.KV("task_success_num", t.Count_success)
+	enc.KV("task_process", fmt.Sprintf("%0.2f", float64(t.Count_success)/float64(t.Count_all)*100))
 	enc.Raw("option", util.ToJsonBytes(t.Option))
 	enc.End("}")
 	return enc.Bytes()
+}
+
+func (t *Task) get_timeuse_second() (float64, string) {
+	switch t.Status {
+	case Task_Status_Init:
+		t.CalculateTimeUse()
+	case Task_Status_Running:
+		t.CalculateTimeUse()
+	case Task_Status_Paused_By_Program:
+		t.CalculateTimeUse()
+	case Task_Status_Paused_Artificial:
+		t.CalculateTimeUse()
+	default:
+
+	}
+	return t.Timeuse_second, t.Timeuse_msg
+}
+
+func (t *Task) end() {
+	t.End_time = time.Now()
+	t.CalculateTimeUse()
+	t.Status = Task_Status_Success
+}
+
+func (t *Task) endWithErr(msg string) {
+	t.Msg = msg
+	t.End_time = time.Now()
+	t.CalculateTimeUse()
+	t.Status = Task_Status_Error
+}
+
+func (t *Task) CalculateTimeUse() {
+	timeuse := time.Since(t.Start_time)
+	timeuseMsg := fmt.Sprintf("%d小时%02d分钟%02d秒", int(timeuse.Hours()), int(timeuse.Minutes())%60, int(timeuse.Seconds())%60)
+	t.Timeuse_second = timeuse.Seconds()
+	t.Timeuse_msg = timeuseMsg
 }
 
 func (t *Task) executionMonitor() {
@@ -134,14 +209,14 @@ func (t *Task) executionMonitor() {
 		default:
 			isInTimeRange, err := util.IsWithinRange(t.Option.ExcludeTimeRange)
 			if err != nil {
-				t.Pause_signal = 2
+				t.Status = Task_Status_Paused_By_Program
 				xEnv.Errorf("task execution time monitor fail %v", err)
 				return
 			}
-			if t.Pause_signal != 2 && isInTimeRange {
-				t.Pause_signal = 1
-			} else if t.Pause_signal != 2 && !isInTimeRange {
-				t.Pause_signal = 0
+			if t.Status != Task_Status_Paused_Artificial && isInTimeRange {
+				t.Status = Task_Status_Paused_By_Program
+			} else if t.Status != Task_Status_Paused_Artificial && !isInTimeRange {
+				t.Status = Task_Status_Running
 			}
 			// 等待5秒
 			time.Sleep(5 * time.Second)
@@ -153,7 +228,8 @@ func (t *Task) executionMonitor() {
 func (t *Task) GenRun() {
 
 	if t.Dispatch == nil {
-		xEnv.Errorf("%s dispatch got nil")
+		xEnv.Errorf("dispatch got nil")
+		t.endWithErr("dispatch got nil")
 		return
 	}
 
@@ -161,7 +237,6 @@ func (t *Task) GenRun() {
 		t.rad.screen.Start()
 	}
 
-	t.Id = uuid.NewString()
 	audit.NewEvent("PortScanTask.start").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task start, id=%s", t.Id)).Log().Put()
 	//fmt.Printf("scan task start, id=%s config: %s", t.Id, string(t.info()))
 	var ss Scanner
@@ -173,6 +248,7 @@ func (t *Task) GenRun() {
 		xEnv.Errorf("task ip range parse fail %v", err)
 		audit.NewEvent("PortScanTask.error").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("task ip range parse fail %v", err)).Log().Put()
 		close(t.executionTimeMonitorStopChan)
+		t.endWithErr(fmt.Sprintf("task ip range parse fail %v", err))
 		t.Dispatch.End()
 		return
 	}
@@ -185,11 +261,15 @@ func (t *Task) GenRun() {
 		xEnv.Errorf("task port range parse fail %v", err)
 		audit.NewEvent("PortScanTask.error").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("task port range parse fail %v", err)).Log().Put()
 		close(t.executionTimeMonitorStopChan)
+		t.endWithErr(fmt.Sprintf("task port range parse fail %v", err))
 		t.Dispatch.End()
 		return
 	}
 	// todo Support the input of multiple IP ranges
 	t.Count_all = it.TotalNum() * uint64(len(ports))
+
+	// end init, start running
+	t.Status = Task_Status_Running
 	fingerPool, _ := thread.NewPoolWithFunc(t.Option.Pool.Finger, func(v interface{}) {
 		defer wg.FingerPrint.Done()
 		entry := v.(port.OpenIpPort)
@@ -239,7 +319,7 @@ func (t *Task) GenRun() {
 	// host group scan func
 	scan, _ := thread.NewPoolWithFunc(t.Option.Pool.Scan, func(v interface{}) {
 		ip := v.(net.IP)
-		for t.Pause_signal == 1 {
+		for t.Status == Task_Status_Paused_By_Program || t.Status == Task_Status_Paused_Artificial {
 			time.Sleep(3 * time.Second)
 		}
 		scanner(ip)
@@ -250,7 +330,7 @@ func (t *Task) GenRun() {
 	// Pool - ping and port scan
 	ping, _ := thread.NewPoolWithFunc(t.Option.Pool.Ping, func(v interface{}) {
 		ip := v.(net.IP)
-		for t.Pause_signal == 1 {
+		for t.Status == Task_Status_Paused_By_Program || t.Status == Task_Status_Paused_Artificial {
 			time.Sleep(3 * time.Second)
 		}
 		ok := host.IsLive(ip.String(), false, 800*time.Millisecond)
@@ -276,7 +356,7 @@ func (t *Task) GenRun() {
 			ip := make(net.IP, len(it.GetIpByIndex(0)))
 			copy(ip, it.GetIpByIndex(shuffle.Get(i))) // Note: dup copy []byte when concurrent (GetIpByIndex not to do dup copy)
 			// 黑名单ip
-			for t.Pause_signal == 1 {
+			for t.Status == Task_Status_Paused_By_Program || t.Status == Task_Status_Paused_Artificial {
 				time.Sleep(3 * time.Second)
 			}
 			if excluded_ip_map[ip.String()] {
@@ -313,12 +393,8 @@ done:
 	if t.rad.cfg.Debug || t.Debug {
 		xEnv.Infof("executionTimeMonitorStopChan closed")
 	}
-	timeuse := time.Since(t.Option.Ctime)
-	hours := int(timeuse.Hours())
-	minutes := int(timeuse.Minutes()) % 60
-	seconds := int(timeuse.Seconds()) % 60
-	timeuseMsg := fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
-	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Id, timeuseMsg)).Log().Put()
+	t.end()
+	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Id, t.Timeuse_msg)).Log().Put()
 	t.Dispatch.End()
 	if t.rad.cfg.Debug || t.Debug {
 		xEnv.Infof("task end")
