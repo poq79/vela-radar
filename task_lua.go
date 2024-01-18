@@ -1,8 +1,15 @@
 package radar
 
-import "github.com/vela-ssoc/vela-kit/lua"
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/vela-ssoc/vela-kit/lua"
+)
 
 func (t *Task) runL(L *lua.LState) int {
+	t.Id = uuid.NewString()
+	t.Start_time = time.Now()
 	go t.GenRun()
 	go t.executionMonitor()
 	return 0

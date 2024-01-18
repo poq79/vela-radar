@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/vela-ssoc/vela-radar/util"
@@ -33,11 +32,12 @@ const (
 
 type Radar struct {
 	lua.SuperVelaData
-	Status uint32
-	cfg    *Config
-	screen *web.ScreenshotServer
-	task   *Task
-	dr     tunnel.Doer
+	Status   uint32
+	cfg      *Config
+	screen   *web.ScreenshotServer
+	task     *Task
+	lastTask *Task
+	dr       tunnel.Doer
 }
 
 func (rad *Radar) IsWorking() bool {
@@ -53,17 +53,16 @@ func (rad *Radar) Info() []byte {
 	enc.KV("thread", rad.cfg.thread)
 	enc.KV("udp", rad.cfg.FxConfig.UDP)
 	enc.KV("fastmode", rad.cfg.FxConfig.FastMode)
-	enc.KV("defaultTimeout", rad.cfg.FxConfig.DefaultTimeout.Milliseconds())
+	enc.KV("default_timeout", rad.cfg.FxConfig.DefaultTimeout.Milliseconds())
 	if rad.task == nil {
 		enc.KV("task", nil)
 	} else {
-		enc.KV("task_all_num", rad.task.Count_all)
-		enc.KV("task_success_num", rad.task.Count_success)
-		// enc.KV("fingerPrint_task_success_num", rad.task.FingerPrint_count_all)
-		// enc.KV("fingerPrint_task_success_num", rad.task.FingerPrint_count_success)
-		enc.KV("task_process", fmt.Sprintf("%0.2f", float64(rad.task.Count_success)/float64(rad.task.Count_all)*100))
-		enc.KV("pause_signal", rad.task.Pause_signal)
 		enc.Raw("task", rad.task.info())
+	}
+	if rad.lastTask == nil {
+		enc.KV("last_task", nil)
+	} else {
+		enc.Raw("last_task", rad.lastTask.info())
 	}
 	enc.End("}")
 	return enc.Bytes()
@@ -168,7 +167,7 @@ func (rad *Radar) End() {
 	if rad.task.Option.Screenshot {
 		rad.screen.Close()
 	}
-
+	rad.lastTask = rad.task
 	rad.task = nil
 }
 
@@ -199,6 +198,7 @@ func (rad *Radar) Callback(tx *Tx) {
 		Transport: srv.Transport,
 		Version:   srv.Version,
 		Banner:    srv.Raw,
+		TaskId:    rad.task.Id,
 	}
 
 	if tx.Param.Httpx && s.Protocol == "http" {
@@ -226,7 +226,6 @@ func (rad *Radar) NewTask(target string) *Task {
 		Mode:             "pn", // syn or not
 		Httpx:            false,
 		Ping:             false,
-		Ctime:            time.Now(),
 		Rate:             500,
 		Timeout:          800,
 		ExcludeTimeRange: util.TimeRange{},

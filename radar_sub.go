@@ -1,11 +1,12 @@
 package radar
 
 import (
+	"net/netip"
+	"time"
+
 	"github.com/vela-ssoc/vela-radar/fingerprintx/plugins"
 	"github.com/vela-ssoc/vela-radar/fingerprintx/scan"
 	"github.com/vela-ssoc/vela-radar/port"
-	"net/netip"
-	"time"
 )
 
 // OnMessage naabu queue message
@@ -46,6 +47,7 @@ func (rad *Radar) OnMessage(v interface{}) {
 		Transport: srv.Transport,
 		Version:   srv.Version,
 		Banner:    srv.Raw,
+		TaskId:    rad.task.Id,
 	}
 	rad.handle(&h)
 }

@@ -17,13 +17,14 @@ type Service struct {
 	Host      string          `json:"host"       bson:"host"` // 主机域名 (扫内网的时候一般为空或者填 IP)
 	Location  string          `json:"location"`               // 地理位置 *
 	TLS       bool            `json:"tls"`
-	Banner    json.RawMessage `json:"banner"`    // tcp服务的banner信息
-	Protocol  string          `json:"protocol"`  // 应用层协议
-	Transport string          `json:"transport"` // 传输层协议 tcp/udp
-	Version   string          `json:"version"`   // 应用(或者协议)版本
-	Component []string        `json:"component"` // 组件标签
-	Comment   string          `json:"Comment"`   // 备注信息
-	HTTPInfo  *port.HttpInfo  `json:"http_info"` // web服务的指纹以及相关信息
+	Banner    json.RawMessage `json:"banner"`                       // tcp服务的banner信息
+	Protocol  string          `json:"protocol"`                     // 应用层协议
+	Transport string          `json:"transport"`                    // 传输层协议 tcp/udp
+	Version   string          `json:"version"`                      // 应用(或者协议)版本
+	Component []string        `json:"component"`                    // 组件标签
+	Comment   string          `json:"Comment"`                      // 备注信息
+	TaskId    string          `json:"task_id"       bson:"task_id"` // 任务ID
+	HTTPInfo  *port.HttpInfo  `json:"http_info"`                    // web服务的指纹以及相关信息
 }
 
 func (s *Service) String() string                         { return strutil.B2S(s.Bytes()) }
@@ -48,6 +49,7 @@ func (s *Service) Bytes() []byte {
 	enc.KV("component", s.Component)
 	enc.Raw("http_info", util.ToJsonBytes(s.HTTPInfo))
 	enc.KV("banner", string([]byte(s.Banner)))
+	enc.KV("task_id", s.TaskId)
 	enc.End("}")
 	return enc.Bytes()
 }
