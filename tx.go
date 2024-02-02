@@ -1,6 +1,7 @@
 package radar
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/vela-ssoc/vela-radar/port"
@@ -13,8 +14,9 @@ type Tx struct {
 }
 
 func (tx *Tx) Web(s *Service) {
+	url := fmt.Sprintf("%s://%s:%d/", s.Protocol, s.IP.String(), s.Port)
 
-	info, ok := web.ProbeHttpInfo(s.IP, s.Port, s.Protocol, time.Second*2)
+	info, ok := web.ProbeHttpInfo(url, time.Second*2)
 	if !ok {
 		// fmt.Printf("%s:%d  ProbeHttpInfo not OK", s.IP.String(), s.Port)
 		return

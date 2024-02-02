@@ -6,7 +6,6 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -25,7 +24,7 @@ const (
 
 var httpClient *http.Client
 
-func ProbeHttpInfo(ip net.IP, _port uint16, scheme string, dialTimeout time.Duration) (httpInfo *port.HttpInfo, isDailErr bool) {
+func ProbeHttpInfo(url2 string, dialTimeout time.Duration) (httpInfo *port.HttpInfo, isDailErr bool) {
 
 	if httpClient == nil {
 		httpClient = newHttpClient(dialTimeout)
@@ -37,7 +36,6 @@ func ProbeHttpInfo(ip net.IP, _port uint16, scheme string, dialTimeout time.Dura
 	var resp *http.Response
 
 	var rewriteNum int
-	url2 := fmt.Sprintf("%s://%s:%d/", scheme, ip.String(), _port)
 goReq:
 	resp, body, err = getReq(url2)
 	if err != nil {

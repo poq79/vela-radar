@@ -12,6 +12,9 @@ type TimeRange struct {
 
 func IsWithinRange(TimeRange TimeRange) (bool, error) {
 	currentTime := time.Now()
+	if TimeRange.Daily == "" && TimeRange.Begin == "" && TimeRange.End == "" {
+		return false, nil
+	}
 	if TimeRange.Daily == "daily" {
 		begin, err := time.Parse("15:04", TimeRange.Begin)
 		if err != nil {
