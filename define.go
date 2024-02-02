@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
+	"github.com/vela-ssoc/vela-radar/util"
 )
 
 const taskParameterInitErr = "[API /api/v1/arr/agent/radar/runscan]Parameter initialization failed. Please check whether the parameter data type is correct--"
@@ -22,6 +23,18 @@ func (rad *Radar) StatusPath() string {
 	// Generate URLs with specific information  eg: name,location,workgroup..
 	// ..
 	return "/api/v1/arr/agent/radar/status"
+}
+
+func (rad *Radar) PausePath() string {
+	// Generate URLs with specific information  eg: name,location,workgroup..
+	// ..
+	return "/api/v1/arr/agent/radar/pause"
+}
+
+func (rad *Radar) ResumePath() string {
+	// Generate URLs with specific information  eg: name,location,workgroup..
+	// ..
+	return "/api/v1/arr/agent/radar/resume"
 }
 
 func (rad *Radar) TaskHandle(ctx *fasthttp.RequestCtx) error {
@@ -171,14 +184,64 @@ func (rad *Radar) StatusHandle(ctx *fasthttp.RequestCtx) error {
 	return nil
 }
 
+func (rad *Radar) PauseHandle(ctx *fasthttp.RequestCtx) error {
+	if rad.task == nil {
+		return errors.New("当前没有扫描任务")
+	}
+	switch rad.task.Status {
+	case Task_Status_Running:
+		rad.task.Status = Task_Status_Paused_Artificial
+	case Task_Status_Paused_Artificial:
+		return errors.New("任务已经处于暂停状态")
+	case Task_Status_Paused_By_Program:
+		rad.task.Status = Task_Status_Paused_Artificial
+	default:
+		return errors.New("无法暂停任务, 任务现在是[" + rad.task.Status.String() + "] 状态")
+	}
+	ctx.Response.SetBody([]byte("ok"))
+	return nil
+}
+
+func (rad *Radar) ResumeHandle(ctx *fasthttp.RequestCtx) error {
+	if rad.task == nil {
+		return errors.New("当前没有扫描任务")
+	}
+	switch rad.task.Status {
+	case Task_Status_Running:
+		return errors.New("task is already running")
+	case Task_Status_Paused_Artificial:
+		isInTimeRange, err := util.IsWithinRange(rad.task.Option.ExcludeTimeRange)
+		if err != nil {
+			return errors.New("无法恢复任务, 排除时间范围设置错误")
+		}
+		if !isInTimeRange {
+			rad.task.Status = Task_Status_Running
+		} else {
+			rad.task.Status = Task_Status_Paused_By_Program
+			ctx.Response.SetBody([]byte("ok, 但是处于排除时间范围内，不能立即恢复执行, 需等待到排除时间外执行"))
+			return nil
+		}
+	case Task_Status_Paused_By_Program:
+		rad.task.Status = Task_Status_Paused_Artificial
+	default:
+		return errors.New("无法恢复任务, 任务现在是[" + rad.task.Status.String() + "] 状态")
+	}
+	ctx.Response.SetBody([]byte("ok"))
+	return nil
+}
+
 func (rad *Radar) Define() {
 	r := xEnv.R()
 	r.POST(rad.TaskPath(), xEnv.Then(rad.TaskHandle))
 	r.GET(rad.StatusPath(), xEnv.Then(rad.StatusHandle))
+	r.GET(rad.PausePath(), xEnv.Then(rad.PauseHandle))
+	r.GET(rad.ResumePath(), xEnv.Then(rad.ResumeHandle))
 }
 
 func (rad *Radar) UndoDefine() {
 	r := xEnv.R()
 	r.Undo(fasthttp.MethodPost, rad.TaskPath())
 	r.Undo(fasthttp.MethodGet, rad.StatusPath())
+	r.Undo(fasthttp.MethodGet, rad.PausePath())
+	r.Undo(fasthttp.MethodGet, rad.ResumePath())
 }
