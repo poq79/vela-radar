@@ -6,7 +6,6 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -25,7 +24,7 @@ const (
 
 var httpClient *http.Client
 
-func ProbeHttpInfo(ip net.IP, _port uint16, scheme string, dialTimeout time.Duration) (httpInfo *port.HttpInfo, isDailErr bool) {
+func ProbeHttpInfo(url2 string, dialTimeout time.Duration) (httpInfo *port.HttpInfo, isDailErr bool) {
 
 	if httpClient == nil {
 		httpClient = newHttpClient(dialTimeout)
@@ -37,7 +36,6 @@ func ProbeHttpInfo(ip net.IP, _port uint16, scheme string, dialTimeout time.Dura
 	var resp *http.Response
 
 	var rewriteNum int
-	url2 := fmt.Sprintf("%s://%s:%d/", scheme, ip.String(), _port)
 goReq:
 	resp, body, err = getReq(url2)
 	if err != nil {
@@ -90,21 +88,19 @@ goReq:
 			httpInfo.Fingerprints = finder.WebFingerIdent(resp)
 			// favicon
 			fau := finder.FindFaviconUrl(string(body))
+			fau_url := strings.TrimRight(resp.Request.URL.String(), "/") + "/" + "favicon.ico"
 			if fau != "" {
 				if !strings.HasPrefix(fau, "http") {
-					u := resp.Request.URL.String()
-					if strings.HasSuffix("/", u) || strings.HasPrefix("/", fau) {
-						fau = u[:len(u)-1] + fau
-					} else {
-						fau = resp.Request.URL.String() + fau
-					}
+					fau_url = strings.TrimRight(resp.Request.URL.String(), "/") + "/" + strings.TrimLeft(fau, "/")
+				} else {
+					fau_url = fau
 				}
-				_, body2, err2 := getReq(fau)
-				httpInfo.FaviconMH3 = finder.Mmh3Hash32(finder.StandBase64(body2))
-				httpInfo.FaviconMD5 = fmt.Sprintf("%x", md5.Sum(body2))
-				if err2 == nil && len(body2) != 0 {
-					httpInfo.Fingerprints = append(httpInfo.Fingerprints, finder.WebFingerIdentByFavicon_mh3(httpInfo.FaviconMH3)...)
-				}
+			}
+			_, body2, err2 := getReq(fau_url)
+			httpInfo.FaviconMH3 = finder.Mmh3Hash32(finder.StandBase64(body2))
+			httpInfo.FaviconMD5 = fmt.Sprintf("%x", md5.Sum(body2))
+			if err2 == nil && len(body2) != 0 {
+				httpInfo.Fingerprints = append(httpInfo.Fingerprints, finder.WebFingerIdentByFavicon_mh3(httpInfo.FaviconMH3)...)
 			}
 		}
 

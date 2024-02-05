@@ -1,11 +1,10 @@
 package web
 
 import (
-	"net"
 	"testing"
 	"time"
 )
 
 func TestName(t *testing.T) {
-	t.Log(ProbeHttpInfo(net.ParseIP("61.129.129.241"), 443, "https", 5*time.Second))
+	t.Log(ProbeHttpInfo("http://127.0.0.1:8008", 5*time.Second))
 }

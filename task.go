@@ -88,6 +88,10 @@ var Task_Status_Strings = [...]string{
 	"Unknown",
 }
 
+func (s Task_Status) String() string {
+	return Task_Status_Strings[s]
+}
+
 type Task struct {
 	Name           string
 	Id             string

@@ -48,6 +48,7 @@ func (rad *Radar) OnMessage(v interface{}) {
 		Version:   srv.Version,
 		Banner:    srv.Raw,
 		TaskId:    rad.task.Id,
+		Location:  rad.task.Option.Location,
 	}
 	rad.handle(&h)
 }
