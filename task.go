@@ -88,7 +88,7 @@ var Task_Status_Strings = [...]string{
 	"Unknown",
 }
 
-func (s Task_Status) String() string {
+func (s Task_Status) Detail() string {
 	return Task_Status_Strings[s]
 }
 
