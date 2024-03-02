@@ -194,6 +194,7 @@ func (rad *Radar) Callback(tx *Tx) {
 		IP:        tx.Entry.Ip,
 		Port:      tx.Entry.Port,
 		Protocol:  srv.Protocol,
+		Location:  rad.task.Option.Location,
 		TLS:       srv.TLS,
 		Transport: srv.Transport,
 		Version:   srv.Version,
