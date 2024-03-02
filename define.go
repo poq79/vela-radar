@@ -142,6 +142,12 @@ func (rad *Radar) TaskHandle(ctx *fasthttp.RequestCtx) error {
 			} else {
 				// return errors.New(taskParameterInitErr)
 			}
+		case "exclude_target":
+			if v, ok := value.(string); ok {
+				rad.task.Option.set_exclude_target(v)
+			} else {
+				// return errors.New(taskParameterInitErr)
+			}
 		case "excludeTimeRange":
 			if v, ok := value.(string); ok {
 				elements := strings.Split(v, ",")
@@ -196,7 +202,7 @@ func (rad *Radar) PauseHandle(ctx *fasthttp.RequestCtx) error {
 	case Task_Status_Paused_By_Program:
 		rad.task.Status = Task_Status_Paused_Artificial
 	default:
-		return errors.New("无法暂停任务, 任务现在是[" + rad.task.Status.String() + "] 状态")
+		return errors.New("无法暂停任务, 任务现在是[" + rad.task.Status.Detail() + "] 状态")
 	}
 	ctx.Response.SetBody([]byte("ok"))
 	return nil
@@ -224,7 +230,7 @@ func (rad *Radar) ResumeHandle(ctx *fasthttp.RequestCtx) error {
 	case Task_Status_Paused_By_Program:
 		rad.task.Status = Task_Status_Paused_Artificial
 	default:
-		return errors.New("无法恢复任务, 任务现在是[" + rad.task.Status.String() + "] 状态")
+		return errors.New("无法恢复任务, 任务现在是[" + rad.task.Status.Detail() + "] 状态")
 	}
 	ctx.Response.SetBody([]byte("ok"))
 	return nil

@@ -66,6 +66,10 @@ func (o *Option) set_timeout(n int) {
 	}
 }
 
+func (o *Option) set_exclude_target(s string) {
+	o.ExcludedTarget = s
+}
+
 func (o *Option) set_ExcludeTimeRange_Daily(s string) error {
 	switch s {
 	case "daily":
