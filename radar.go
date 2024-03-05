@@ -122,14 +122,15 @@ func (rad *Radar) Screen(tx *Tx, s *Service) {
 
 	select {
 	case <-target.TargetCtx.Done():
-		fmt.Println(fmt.Sprintf("http://%s:%d", s.IP, s.Port) + " canceled or timed out.")
+		// xEnv.Errorf((fmt.Sprintf("[-] [vela-rander] http://%s:%d", s.IP, s.Port) + "screenshot canceled or timed out."))
+		xEnv.Errorf((fmt.Sprintf("[-] Failed to take (URL:http://%s:%d) screenshot:", s.IP, s.Port) + "screenshot canceled or timed out."))
 		// target.Wg.Done()
 	case sig := <-target.Done:
 		switch sig {
 		case 1: //
-			xEnv.Errorf("http://%s:%d screenshot and upload succeed", s.IP, s.Port)
+			xEnv.Errorf("[-] http://%s:%d screenshot and upload succeed", s.IP, s.Port)
 		case -1: //
-			xEnv.Debugf("http://%s:%d screenshot and upload fail", s.IP, s.Port)
+			xEnv.Debugf("[-] http://%s:%d screenshot and upload fail", s.IP, s.Port)
 		}
 	}
 
@@ -138,6 +139,9 @@ func (rad *Radar) Screen(tx *Tx, s *Service) {
 }
 
 func (rad *Radar) handle(s *Service) {
+	//count
+	atomic.AddUint64(&rad.task.Count_asset, 1)
+
 	// todo ignore (use cnd )
 
 	rad.cfg.Chains.Do(s, rad.cfg.co, func(err error) {
@@ -164,9 +168,6 @@ func (rad *Radar) handle(s *Service) {
 
 func (rad *Radar) End() {
 	atomic.StoreUint32(&rad.Status, Idle)
-	if rad.task.Option.Screenshot {
-		rad.screen.Close()
-	}
 	rad.lastTask = rad.task
 	rad.task = nil
 }

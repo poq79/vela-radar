@@ -34,6 +34,8 @@ Active scanning of network assets
 2024-01-17 &emsp; v0.4.9 &emsp; 整理完善文档          
 2024-01-29 &emsp; v0.4.10&emsp; 修复上报的资产信息不带location的问题  
 2024-01-29 &emsp; v0.5.0 &emsp; 新增扫描手动暂停接口   
+2024-03-02 &emsp; v0.5.0 &emsp; 优化内部任务调度API, 修复若干问题   
+2024-03-04 &emsp; v0.5.0 &emsp; 尝试解决超长时间任务无法退出问题   
 
 
 

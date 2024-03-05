@@ -99,6 +99,7 @@ type Task struct {
 	Status         Task_Status
 	Count_all      uint64
 	Count_success  uint64
+	Count_asset    uint64
 	Start_time     time.Time
 	End_time       time.Time
 	Timeuse_second float64
@@ -148,6 +149,7 @@ func (t *Task) info() []byte {
 	enc.KV("timeuse_msg", timeuse_msg)
 	enc.KV("task_all_num", t.Count_all)
 	enc.KV("task_success_num", t.Count_success)
+	enc.KV("task_asset_num", t.Count_asset)
 	enc.KV("task_process", fmt.Sprintf("%0.2f", float64(t.Count_success)/float64(t.Count_all)*100))
 	enc.Raw("option", util.ToJsonBytes(t.Option))
 	enc.End("}")
@@ -226,7 +228,9 @@ func (t *Task) executionMonitor() {
 }
 
 func (t *Task) GenRun() {
-
+	if t.rad.cfg.Debug || t.Debug {
+		xEnv.Infof("[debug is enable]")
+	}
 	if t.Dispatch == nil {
 		xEnv.Errorf("dispatch got nil")
 		t.endWithErr("dispatch got nil")
@@ -392,6 +396,12 @@ done:
 	close(t.executionTimeMonitorStopChan)
 	if t.rad.cfg.Debug || t.Debug {
 		xEnv.Infof("executionTimeMonitorStopChan closed")
+	}
+	if t.rad.task.Option.Screenshot {
+		t.rad.screen.Close()
+		if t.rad.cfg.Debug || t.Debug {
+			xEnv.Infof("ScreenshotServer closed")
+		}
 	}
 	t.end()
 	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Id, t.Timeuse_msg)).Log().Put()
