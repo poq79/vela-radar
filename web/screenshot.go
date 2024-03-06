@@ -190,7 +190,9 @@ func (st *ScreenshotServer) Close() {
 			st.Logger.Errorf("%v", e)
 		}
 	}()
-
+	if st.queue == nil || len(st.queue) == 0 {
+		return
+	}
 	close(st.queue)
 }
 

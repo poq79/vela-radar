@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -176,6 +177,11 @@ func (t *Task) end() {
 	t.End_time = time.Now()
 	t.CalculateTimeUse()
 	t.Status = Task_Status_Success
+	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Id, t.Timeuse_msg)).Log().Put()
+	t.Dispatch.End()
+	if t.rad.cfg.Debug || t.Debug {
+		xEnv.Infof("task end")
+	}
 }
 
 func (t *Task) endWithErr(msg string) {
@@ -183,6 +189,12 @@ func (t *Task) endWithErr(msg string) {
 	t.End_time = time.Now()
 	t.CalculateTimeUse()
 	t.Status = Task_Status_Error
+	audit.NewEvent("PortScanTask.error").Subject("调试信息").From(t.co.CodeVM()).Msg(msg).Log().Put()
+	close(t.executionTimeMonitorStopChan)
+	t.Dispatch.End()
+	if t.rad.cfg.Debug || t.Debug {
+		xEnv.Infof("task end with error : %s", msg)
+	}
 }
 
 func (t *Task) CalculateTimeUse() {
@@ -247,30 +259,26 @@ func (t *Task) GenRun() {
 	var err error
 	wg := new(WaitGroup)
 	// parse ip
-	it, startIp, err := iputil.NewIter(t.Option.Target)
-	if err != nil {
-		xEnv.Errorf("task ip range parse fail %v", err)
-		audit.NewEvent("PortScanTask.error").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("task ip range parse fail %v", err)).Log().Put()
-		close(t.executionTimeMonitorStopChan)
-		t.endWithErr(fmt.Sprintf("task ip range parse fail %v", err))
-		t.Dispatch.End()
-		return
-	}
-
+	items := strings.Split(t.Option.Target, ",")
 	excluded_ip_map := util.IpstrWithCommaToMap(t.Option.ExcludedTarget)
-
 	// 解析端口字符串并且优先发送 TopTcpPorts 中的端口, eg: 1-65535,top1000
 	ports, err := port.ShuffleParseAndMergeTopPorts(t.Option.Port)
 	if err != nil {
-		xEnv.Errorf("task port range parse fail %v", err)
-		audit.NewEvent("PortScanTask.error").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("task port range parse fail %v", err)).Log().Put()
-		close(t.executionTimeMonitorStopChan)
 		t.endWithErr(fmt.Sprintf("task port range parse fail %v", err))
-		t.Dispatch.End()
 		return
 	}
-	// todo Support the input of multiple IP ranges
-	t.Count_all = it.TotalNum() * uint64(len(ports))
+	for n, ip := range items {
+		if t.rad.cfg.Debug || t.Debug {
+			xEnv.Infof("get Target[%d] %s", n, ip)
+		}
+		it, _, err := iputil.NewIter(ip)
+		if err != nil {
+			t.endWithErr(fmt.Sprintf("task ip range[%s] parse fail %v", ip, err))
+			return
+		}
+
+		t.Count_all = t.Count_all + it.TotalNum()*uint64(len(ports))
+	}
 
 	// end init, start running
 	t.Status = Task_Status_Running
@@ -292,87 +300,98 @@ func (t *Task) GenRun() {
 		fingerPool.Invoke(v)
 	}
 
-	switch t.Option.Mode {
-	case "syn":
-		ss, err = syn.NewSynScanner(startIp, call, port.Option{
-			Rate:    t.Option.Rate,
-			Timeout: t.Option.Timeout,
-		})
-	default:
-		ss, err = tcp.NewTcpScanner(call, port.Option{
-			Rate:    t.Option.Rate,
-			Timeout: t.Option.Timeout,
-		})
-	}
-
-	// port scan func
-	scanner := func(ip net.IP) {
-		n := len(ports)
-		if n == 1 {
-			ss.WaitLimiter() // limit rate
-			ss.Scan(ip, ports[0])
+	for n, ip := range items {
+		it, startIp, err := iputil.NewIter(ip)
+		if err != nil {
+			t.endWithErr(fmt.Sprintf("task ip range[%s] parse fail (scanning): %v", ip, err))
 			return
 		}
-
-		for i := 0; i < n; i++ {
-			ss.WaitLimiter() // limit rate
-			ss.Scan(ip, ports[i])
-		}
-	}
-
-	// host group scan func
-	scan, _ := thread.NewPoolWithFunc(t.Option.Pool.Scan, func(v interface{}) {
-		ip := v.(net.IP)
-		for t.Status == Task_Status_Paused_By_Program || t.Status == Task_Status_Paused_Artificial {
-			time.Sleep(3 * time.Second)
-		}
-		scanner(ip)
-		wg.Scan.Done()
-	})
-	defer scan.Release()
-
-	// Pool - ping and port scan
-	ping, _ := thread.NewPoolWithFunc(t.Option.Pool.Ping, func(v interface{}) {
-		ip := v.(net.IP)
-		for t.Status == Task_Status_Paused_By_Program || t.Status == Task_Status_Paused_Artificial {
-			time.Sleep(3 * time.Second)
-		}
-		ok := host.IsLive(ip.String(), false, 800*time.Millisecond)
-		wg.Ping.Done()
-
-		if ok {
-			wg.Scan.Add(1)
-			scan.Invoke(ip)
-		} else {
-			// atomic.AddUint64(&t.Count_success, uint64(len(ports)))
-			atomic.AddUint64(&t.Count_success, 1)
-			atomic.AddUint64(&t.Count_all, uint64(1-len(ports)))
-		}
-	})
-	defer ping.Release()
-
-	shuffle := util.NewShuffle(it.TotalNum())    // shuffle
-	for i := uint64(0); i < it.TotalNum(); i++ { // ip index
-		select {
-		case <-t.ctx.Done():
-			goto done
+		switch t.Option.Mode {
+		case "syn":
+			ss, err = syn.NewSynScanner(startIp, call, port.Option{
+				Rate:    t.Option.Rate,
+				Timeout: t.Option.Timeout,
+			})
 		default:
-			ip := make(net.IP, len(it.GetIpByIndex(0)))
-			copy(ip, it.GetIpByIndex(shuffle.Get(i))) // Note: dup copy []byte when concurrent (GetIpByIndex not to do dup copy)
-			// 黑名单ip
+			ss, err = tcp.NewTcpScanner(call, port.Option{
+				Rate:    t.Option.Rate,
+				Timeout: t.Option.Timeout,
+			})
+		}
+
+		// port scan func
+		scanner := func(ip net.IP) {
+			n := len(ports)
+			if n == 1 {
+				ss.WaitLimiter() // limit rate
+				ss.Scan(ip, ports[0])
+				return
+			}
+
+			for i := 0; i < n; i++ {
+				ss.WaitLimiter() // limit rate
+				ss.Scan(ip, ports[i])
+			}
+		}
+
+		// host group scan func
+		scan, _ := thread.NewPoolWithFunc(t.Option.Pool.Scan, func(v interface{}) {
+			ip := v.(net.IP)
 			for t.Status == Task_Status_Paused_By_Program || t.Status == Task_Status_Paused_Artificial {
 				time.Sleep(3 * time.Second)
 			}
-			if excluded_ip_map[ip.String()] {
+			scanner(ip)
+			wg.Scan.Done()
+		})
+		defer scan.Release()
+
+		// Pool - ping and port scan
+		ping, _ := thread.NewPoolWithFunc(t.Option.Pool.Ping, func(v interface{}) {
+			ip := v.(net.IP)
+			for t.Status == Task_Status_Paused_By_Program || t.Status == Task_Status_Paused_Artificial {
+				time.Sleep(3 * time.Second)
+			}
+			ok := host.IsLive(ip.String(), false, 800*time.Millisecond)
+			wg.Ping.Done()
+
+			if ok {
+				wg.Scan.Add(1)
+				scan.Invoke(ip)
+			} else {
 				// atomic.AddUint64(&t.Count_success, uint64(len(ports)))
 				atomic.AddUint64(&t.Count_success, 1)
 				atomic.AddUint64(&t.Count_all, uint64(1-len(ports)))
-			} else if t.Option.Ping {
-				wg.Ping.Add(1)
-				_ = ping.Invoke(ip)
-			} else {
-				wg.Scan.Add(1)
-				_ = scan.Invoke(ip)
+			}
+		})
+		defer ping.Release()
+
+		shuffle := util.NewShuffle(it.TotalNum())    // shuffle
+		for i := uint64(0); i < it.TotalNum(); i++ { // ip index
+			select {
+			case <-t.ctx.Done():
+				if len(items) == n+1 {
+					goto done
+				} else {
+					continue
+				}
+			default:
+				ip := make(net.IP, len(it.GetIpByIndex(0)))
+				copy(ip, it.GetIpByIndex(shuffle.Get(i))) // Note: dup copy []byte when concurrent (GetIpByIndex not to do dup copy)
+				// 黑名单ip
+				for t.Status == Task_Status_Paused_By_Program || t.Status == Task_Status_Paused_Artificial {
+					time.Sleep(3 * time.Second)
+				}
+				if excluded_ip_map[ip.String()] {
+					// atomic.AddUint64(&t.Count_success, uint64(len(ports)))
+					atomic.AddUint64(&t.Count_success, 1)
+					atomic.AddUint64(&t.Count_all, uint64(1-len(ports)))
+				} else if t.Option.Ping {
+					wg.Ping.Add(1)
+					_ = ping.Invoke(ip)
+				} else {
+					wg.Scan.Add(1)
+					_ = scan.Invoke(ip)
+				}
 			}
 		}
 	}
@@ -397,17 +416,11 @@ done:
 	if t.rad.cfg.Debug || t.Debug {
 		xEnv.Infof("executionTimeMonitorStopChan closed")
 	}
-	if t.rad.task.Option.Screenshot {
+	if t.rad.task.Option.Screenshot && t.rad.screen != nil {
 		t.rad.screen.Close()
 		if t.rad.cfg.Debug || t.Debug {
 			xEnv.Infof("ScreenshotServer closed")
 		}
 	}
 	t.end()
-	audit.NewEvent("PortScanTask.end").Subject("调试信息").From(t.co.CodeVM()).Msg(fmt.Sprintf("scan task succeed, id=%s, time use:%s", t.Id, t.Timeuse_msg)).Log().Put()
-	t.Dispatch.End()
-	if t.rad.cfg.Debug || t.Debug {
-		xEnv.Infof("task end")
-	}
-	// audit.Debug("task end").From(t.co.CodeVM()).Put()
 }
