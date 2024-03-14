@@ -147,22 +147,25 @@ func (rad *Radar) handle(s *Service) {
 	rad.cfg.Chains.Do(s, rad.cfg.co, func(err error) {
 		rad.Exception(err)
 	})
-	// todo upload (use tunnel)
-	// res, err := xEnv.Fetch("/api/v1/broker/proxy/siem/api/netapp/mono", bytes.NewReader(s.Bytes()), nil)
-	req, err := http.NewRequest("POST", rad.cfg.ReportUri, bytes.NewReader(s.Bytes()))
-	req.Header.Set("Content-Type", "application/json")
-	if err != nil {
-		xEnv.Errorf("create request fail %v", err)
-		return
-	}
-	res, err := rad.dr.Do(req)
-	if err != nil {
-		xEnv.Errorf("upload siem info fail %v", err)
-		return
-	}
 
-	if res.StatusCode != 200 {
-		xEnv.Errorf("upload siem info not ok %v", err)
+	if rad.task.Report {
+		// todo upload (use tunnel)
+		// res, err := xEnv.Fetch("/api/v1/broker/proxy/siem/api/netapp/mono", bytes.NewReader(s.Bytes()), nil)
+		req, err := http.NewRequest("POST", rad.cfg.ReportUri, bytes.NewReader(s.Bytes()))
+		req.Header.Set("Content-Type", "application/json")
+		if err != nil {
+			xEnv.Errorf("create request fail %v", err)
+			return
+		}
+		res, err := rad.dr.Do(req)
+		if err != nil {
+			xEnv.Errorf("upload siem info fail %v", err)
+			return
+		}
+
+		if res.StatusCode != 200 {
+			xEnv.Errorf("upload siem info not ok %v", err)
+		}
 	}
 }
 

@@ -142,6 +142,12 @@ func (rad *Radar) TaskHandle(ctx *fasthttp.RequestCtx) error {
 			} else {
 				// return errors.New(taskParameterInitErr)
 			}
+		case "report":
+			if v, ok := value.(bool); ok {
+				rad.task.Report = v
+			} else {
+				// return errors.New(taskParameterInitErr)
+			}
 		case "exclude_target":
 			if v, ok := value.(string); ok {
 				rad.task.Option.set_exclude_target(v)

@@ -97,6 +97,7 @@ type Task struct {
 	Name           string
 	Id             string
 	Debug          bool
+	Report         bool
 	Status         Task_Status
 	Count_all      uint64
 	Count_success  uint64
@@ -142,6 +143,7 @@ func (t *Task) info() []byte {
 	enc.KV("name", t.Name)
 	enc.KV("id", t.Id)
 	enc.KV("debug", t.Debug)
+	enc.KV("report", t.Report)
 	enc.KV("status", t.Status)
 	enc.KV("msg", t.Msg)
 	enc.KV("start_time", t.Start_time)
