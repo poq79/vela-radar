@@ -95,6 +95,10 @@ func (cfg *Config) MinioConfig(L *lua.LState, val lua.LValue) {
 			cfg.MinioCfg.SecretKey = lua.IsString(value)
 		case "endpoint":
 			cfg.MinioCfg.Endpoint = lua.IsString(value)
+		case "previewEndpoint":
+			cfg.MinioCfg.Endpoint_preview = lua.IsString(value)
+		case "bucketName":
+			cfg.MinioCfg.BucketName = lua.IsString(value)
 		case "name":
 			cfg.MinioCfg.Name = lua.IsString(value)
 		case "useSSL":

@@ -18,5 +18,5 @@ func TestUploadToMinio(t *testing.T) {
 		t.Error(err)
 	}
 	fileSize := stat.Size()
-	UploadToMinio(&cfg, "radar-screenshoot", "123.jpg", file, fileSize)
+	UploadToMinio(&cfg, "123.jpg", file, fileSize)
 }

@@ -144,7 +144,7 @@ func (st *ScreenshotServer) navigate(workerNum int, option []chromedp.ExecAlloca
 			return err
 		}
 
-		ScreenshotURL, err := util.UploadToMinio(st.Cfg.Miniocfg, "radar-screenshoot", target.Radartaskid+".png", bytes.NewReader(buf), int64(len(buf)))
+		ScreenshotURL, err := util.UploadToMinio(st.Cfg.Miniocfg, target.Radartaskid+".png", bytes.NewReader(buf), int64(len(buf)))
 		if err != nil {
 			log.Errorf("[-] Failed to write file %v", err)
 			target.Done <- -1
