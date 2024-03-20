@@ -39,7 +39,7 @@ type WaitGroup struct {
 	FingerPrint sync.WaitGroup
 }
 
-func (wg *WaitGroup) Wait(debug bool) {
+func (wg *WaitGroup) Wait(ss Scanner, debug bool) {
 	wg.Ping.Wait()
 	if debug {
 		xEnv.Infof("  wg.Ping.Wait() end")
@@ -47,6 +47,14 @@ func (wg *WaitGroup) Wait(debug bool) {
 	wg.Scan.Wait()
 	if debug {
 		xEnv.Infof("  wg.Scan.Wait() end")
+	}
+	ss.Wait()
+	if debug {
+		xEnv.Infof("  ss.Wait end")
+	}
+	ss.Close()
+	if debug {
+		xEnv.Infof("  ss.scanner closed")
 	}
 	wg.FingerPrint.Wait()
 	if debug {
@@ -259,7 +267,7 @@ func (t *Task) GenRun() {
 	//fmt.Printf("scan task start, id=%s config: %s", t.Id, string(t.info()))
 	var ss Scanner
 	var err error
-	wg := new(WaitGroup)
+	t.WaitGroup = WaitGroup{}
 	// parse ip
 	items := strings.Split(t.Option.Target, ",")
 	excluded_ip_map := util.IpstrWithCommaToMap(t.Option.ExcludedTarget)
@@ -285,24 +293,30 @@ func (t *Task) GenRun() {
 	// end init, start running
 	t.Status = Task_Status_Running
 	fingerPool, _ := thread.NewPoolWithFunc(t.Option.Pool.Finger, func(v interface{}) {
-		defer wg.FingerPrint.Done()
+		defer t.WaitGroup.FingerPrint.Done()
+
+		t.WaitGroup.FingerPrint.Add(1)
 		entry := v.(port.OpenIpPort)
 		t.Dispatch.Callback(&Tx{Entry: entry, Param: t.Option})
+
+		atomic.AddUint64(&t.Count_success, 1)
 		// atomic.AddUint64(&t.FingerPrint_count_success, 1)
 	})
 	defer fingerPool.Release()
 
 	call := func(v port.OpenIpPort) {
-		atomic.AddUint64(&t.Count_success, 1)
+		// atomic.AddUint64(&t.Count_success, 1)
 		if v.Ip == nil {
+			atomic.AddUint64(&t.Count_success, 1)
 			return
 		}
 		// atomic.AddUint64(&t.FingerPrint_count_all, 1)
-		wg.FingerPrint.Add(1)
+
+		//wg.FingerPrint.Add(1)
 		fingerPool.Invoke(v)
 	}
 
-	for n, ip := range items {
+	for _, ip := range items {
 		it, startIp, err := iputil.NewIter(ip)
 		if err != nil {
 			t.endWithErr(fmt.Sprintf("task ip range[%s] parse fail (scanning): %v", ip, err))
@@ -338,12 +352,12 @@ func (t *Task) GenRun() {
 
 		// host group scan func
 		scan, _ := thread.NewPoolWithFunc(t.Option.Pool.Scan, func(v interface{}) {
+			defer t.WaitGroup.Scan.Done()
 			ip := v.(net.IP)
 			for t.Status == Task_Status_Paused_By_Program || t.Status == Task_Status_Paused_Artificial {
 				time.Sleep(3 * time.Second)
 			}
 			scanner(ip)
-			wg.Scan.Done()
 		})
 		defer scan.Release()
 
@@ -354,10 +368,10 @@ func (t *Task) GenRun() {
 				time.Sleep(3 * time.Second)
 			}
 			ok := host.IsLive(ip.String(), false, 800*time.Millisecond)
-			wg.Ping.Done()
+			t.WaitGroup.Ping.Done()
 
 			if ok {
-				wg.Scan.Add(1)
+				t.WaitGroup.Scan.Add(1)
 				scan.Invoke(ip)
 			} else {
 				// atomic.AddUint64(&t.Count_success, uint64(len(ports)))
@@ -371,11 +385,9 @@ func (t *Task) GenRun() {
 		for i := uint64(0); i < it.TotalNum(); i++ { // ip index
 			select {
 			case <-t.ctx.Done():
-				if len(items) == n+1 {
-					goto done
-				} else {
-					continue
-				}
+				// t.cancel()
+				xEnv.Infof("kill task...")
+				goto done
 			default:
 				ip := make(net.IP, len(it.GetIpByIndex(0)))
 				copy(ip, it.GetIpByIndex(shuffle.Get(i))) // Note: dup copy []byte when concurrent (GetIpByIndex not to do dup copy)
@@ -388,10 +400,10 @@ func (t *Task) GenRun() {
 					atomic.AddUint64(&t.Count_success, 1)
 					atomic.AddUint64(&t.Count_all, uint64(1-len(ports)))
 				} else if t.Option.Ping {
-					wg.Ping.Add(1)
+					t.WaitGroup.Ping.Add(1)
 					_ = ping.Invoke(ip)
 				} else {
-					wg.Scan.Add(1)
+					t.WaitGroup.Scan.Add(1)
 					_ = scan.Invoke(ip)
 				}
 			}
@@ -399,21 +411,12 @@ func (t *Task) GenRun() {
 	}
 
 done:
-	wg.Wait(t.rad.cfg.Debug || t.Debug)
+	t.WaitGroup.Wait(ss, t.rad.cfg.Debug || t.Debug)
 	if t.rad.cfg.Debug || t.Debug {
 		xEnv.Infof("wg.Wait end")
 		// fmt.Printf("task end\n")
 	}
-	ss.Wait()
-	if t.rad.cfg.Debug || t.Debug {
-		xEnv.Infof("ss.Wait end")
-		// fmt.Printf("ss.Wait end\n")
-	}
-	ss.Close()
-	if t.rad.cfg.Debug || t.Debug {
-		xEnv.Infof("[%s]scanner closed", t.Option.Mode)
-		// fmt.Printf("[%s]scanner closed\n")
-	}
+
 	close(t.executionTimeMonitorStopChan)
 	if t.rad.cfg.Debug || t.Debug {
 		xEnv.Infof("executionTimeMonitorStopChan closed")

@@ -14,7 +14,6 @@ import (
 	"github.com/vela-ssoc/vela-kit/vela"
 
 	"github.com/chromedp/chromedp"
-	log "github.com/sirupsen/logrus"
 	"github.com/vela-ssoc/vela-radar/util"
 )
 
@@ -146,7 +145,7 @@ func (st *ScreenshotServer) navigate(workerNum int, option []chromedp.ExecAlloca
 
 		ScreenshotURL, err := util.UploadToMinio(st.Cfg.Miniocfg, target.Radartaskid+".png", bytes.NewReader(buf), int64(len(buf)))
 		if err != nil {
-			log.Errorf("[-] Failed to write file %v", err)
+			st.Logger.Errorf("[-] Failed to write file %v", err)
 			target.Done <- -1
 			return err
 		}
@@ -176,6 +175,10 @@ func (st *ScreenshotServer) navigate(workerNum int, option []chromedp.ExecAlloca
 	for target := range st.queue {
 		screen(target)
 	}
+	if st.Cfg.Debug {
+		st.Logger.Infof("[+]ScreenshotServer navigate [%d] closed", workerNum)
+	}
+	pCtx.Done()
 }
 
 func (st *ScreenshotServer) Push(target *ScreenshotTask) {
@@ -187,13 +190,27 @@ func (st *ScreenshotServer) Push(target *ScreenshotTask) {
 func (st *ScreenshotServer) Close() {
 	defer func() {
 		if e := recover(); e != nil {
-			st.Logger.Errorf("%v", e)
+			st.Logger.Errorf("ScreenshotServer Closer ERR:%v", e)
 		}
 	}()
 	if st.queue == nil || len(st.queue) == 0 {
 		return
 	}
 	close(st.queue)
+	for {
+		if len(st.queue) == 0 {
+			targets, err := chromedp.Targets(st.ctx)
+			if err != nil {
+				st.Logger.Infof("[+]ScreenshotServer closed (chromedp targets get err)")
+				break
+			}
+			if len(targets) == 0 {
+				st.Logger.Infof("[+]ScreenshotServer closed")
+				break
+			}
+		}
+		time.Sleep(time.Second * 1)
+	}
 }
 
 func fullScreenshot(urlstr string, quality int, res *[]byte) chromedp.Tasks {
