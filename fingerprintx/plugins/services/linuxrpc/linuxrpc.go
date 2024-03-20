@@ -19,6 +19,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/vela-ssoc/vela-radar/fingerprintx/plugins"
@@ -138,21 +139,24 @@ func parseRPCInfo(response []byte, lookupResponse *plugins.ServiceRPC) error {
 			networkIDLen++
 		}
 		response = response[4:]
-		tmp.Protocol = string(response[0:networkIDLen])
+		//tmp.Protocol =
+		tmp.Protocol = strings.Trim(string(response[0:networkIDLen]), "\\u0000")
 		response = response[networkIDLen:]
 		addressLen := int(binary.BigEndian.Uint32(response[0:4]))
 		for addressLen%4 != 0 {
 			addressLen++
 		}
 		response = response[4:]
-		tmp.Address = string(response[0:addressLen])
+		//tmp.Address = string(response[0:addressLen])
+		tmp.Address = strings.Trim(string(response[0:addressLen]), "\\u0000")
 		response = response[addressLen:]
 		ownerLen := int(binary.BigEndian.Uint32(response[0:4]))
 		for ownerLen%4 != 0 {
 			ownerLen++
 		}
 		response = response[4:]
-		tmp.Owner = string(response[0:ownerLen])
+		//tmp.Owner = string(response[0:ownerLen])
+		tmp.Owner = strings.Trim(string(response[0:ownerLen]), "\\u0000")
 		response = response[ownerLen:]
 
 		valueFollows = int(binary.BigEndian.Uint32(response[0:4]))
