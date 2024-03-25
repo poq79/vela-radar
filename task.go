@@ -294,12 +294,11 @@ func (t *Task) GenRun() {
 	t.Status = Task_Status_Running
 	fingerPool, _ := thread.NewPoolWithFunc(t.Option.Pool.Finger, func(v interface{}) {
 		defer t.WaitGroup.FingerPrint.Done()
+		defer atomic.AddUint64(&t.Count_success, 1)
 
-		t.WaitGroup.FingerPrint.Add(1)
 		entry := v.(port.OpenIpPort)
 		t.Dispatch.Callback(&Tx{Entry: entry, Param: t.Option})
 
-		atomic.AddUint64(&t.Count_success, 1)
 		// atomic.AddUint64(&t.FingerPrint_count_success, 1)
 	})
 	defer fingerPool.Release()
@@ -309,11 +308,11 @@ func (t *Task) GenRun() {
 		if v.Ip == nil {
 			atomic.AddUint64(&t.Count_success, 1)
 			return
+
 		}
 		// atomic.AddUint64(&t.FingerPrint_count_all, 1)
-
-		//wg.FingerPrint.Add(1)
-		fingerPool.Invoke(v)
+		t.WaitGroup.FingerPrint.Add(1)
+		_ = fingerPool.Invoke(v)
 	}
 
 	for _, ip := range items {
@@ -372,7 +371,7 @@ func (t *Task) GenRun() {
 
 			if ok {
 				t.WaitGroup.Scan.Add(1)
-				scan.Invoke(ip)
+				_ = scan.Invoke(ip)
 			} else {
 				// atomic.AddUint64(&t.Count_success, uint64(len(ports)))
 				atomic.AddUint64(&t.Count_success, 1)

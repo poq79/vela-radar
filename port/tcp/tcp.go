@@ -66,7 +66,7 @@ func (ts *TcpScanner) Scan(ip net.IP, dst uint16) error {
 		}
 		conn, _ := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, dst), ts.timeout)
 		if conn != nil {
-			conn.Close()
+			_ = conn.Close()
 		} else {
 			ts.callback(port.OpenIpPort{
 				Ip:   nil,
@@ -74,7 +74,7 @@ func (ts *TcpScanner) Scan(ip net.IP, dst uint16) error {
 			})
 			return
 		}
-		ts.callback(openIpPort)
+		go ts.callback(openIpPort)
 	}()
 	return nil
 }

@@ -108,6 +108,10 @@ func (rad *Radar) Screen(tx *Tx, s *Service) {
 		return
 	}
 
+	if s.HTTPInfo.Body == "" || s.HTTPInfo.Header == "Content-Type: text/plain\nContent-Length: 0\n" {
+		return
+	}
+
 	target := &web.ScreenshotTask{
 		Radartaskid:   uuid.NewString(),
 		Url:           s.HTTPInfo.URL,
@@ -117,14 +121,12 @@ func (rad *Radar) Screen(tx *Tx, s *Service) {
 		Done:          make(chan int),
 		TimeoutCancel: func() {},
 	}
-	defer target.TimeoutCancel()
+	//defer target.TimeoutCancel()
 	rad.screen.Push(target)
 
 	select {
-	case <-target.TargetCtx.Done():
-		// xEnv.Errorf((fmt.Sprintf("[-] [vela-rander] http://%s:%d", s.IP, s.Port) + "screenshot canceled or timed out."))
-		xEnv.Errorf((fmt.Sprintf("[-] Failed to take (URL:http://%s:%d) screenshot:", s.IP, s.Port) + "screenshot canceled or timed out."))
-		// target.Wg.Done()
+	//case <-target.TargetCtx.Done():
+	//	xEnv.Errorf(fmt.Sprintf("[-] Failed to take (URL:http://%s:%d) screenshot:", s.IP, s.Port) + "screenshot canceled or timed out.")
 	case sig := <-target.Done:
 		switch sig {
 		case 1: //
